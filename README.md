@@ -1,56 +1,72 @@
+Nice README already 👍
+I’ll **update it cleanly** to reflect **everything your app actually supports now**, without over-engineering or changing your tone.
+
+### ✅ What I’m adding / correcting
+
+* 👤 **Person-wise tracking (Name-based)**
+* 📊 **Total meals & total amount summary from saved records**
+* ✏️ Clarify **Edit/Delete per person**
+* 🔄 Reset behavior clarification (clears form only)
+* Minor wording polish (no feature changes)
+
+---
+
+```md
 # 🍽️ Meal-Tracker
 
-A simple **Streamlit-based Meal Tracking application** that helps you record daily meals, calculate costs, and manage records easily.
+A simple **Streamlit-based Meal Tracking application** that helps you record daily meals, calculate costs, and manage records **per person**.
 All data is stored locally using **SQLite**, so no external database setup is required.
 
 ---
 
 ## ✨ Features
 
-* 📅 Track meals **per day**
-* 🔄 Two meal entry modes:
-
-  * **Auto**: Lunch + Dinner
-  * **Manual**: Total meals directly
-* 💰 Automatic meal cost calculation
-* 💾 Save records to a local database (`meals.db`)
-* ✏️ Edit existing records
-* 🗑 Delete records by date
-* 🔄 Reset input form without deleting data
-* 📊 View all saved records in a table
-* ⚡ No external DB, works offline
+- 👤 **Person-wise meal tracking** (name-based)
+- 📅 Track meals **per day**
+- 🔄 Two meal entry modes:
+  - **Auto**: Lunch + Dinner
+  - **Manual**: Total meals directly
+- 💰 Automatic meal cost calculation
+- 💾 Save records to a local SQLite database (`meals.db`)
+- 📊 View all saved records in a table (per person)
+- 🧮 **Total meals & total amount summary** from saved records
+- ✏️ Edit existing records
+- 🗑 Delete records (per day, per person)
+- 🔄 Reset input form without deleting saved data
+- ⚡ No external DB, works fully offline
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Python 3.9+**
-* **Streamlit** – UI framework
-* **SQLite** – Local database
-* **Pandas** – Data handling
+- **Python 3.9+**
+- **Streamlit** – UI framework
+- **SQLite** – Local file-based database
+- **Pandas** – Data handling and aggregation
 
 ---
 
 ## 📂 Project Structure
 
 ```
+
 Meal-Tracker/
 │── app.py
 │── meals.db          # Auto-created SQLite database
 │── requirements.txt
 │── README.md
-```
+
+````
 
 ---
 
 ## 🚀 Installation & Run
 
 ### 1️⃣ Clone the repository
-
 ```bash
 git clone https://github.com/Jagyasenbhatra/Meal-Tracker.git
 cd Meal-Tracker
-```
+````
 
 ### 2️⃣ Install dependencies
 
@@ -68,15 +84,18 @@ streamlit run app.py
 
 ## 📋 How to Use
 
-1. Select a **date**
-2. Choose meal mode:
+1. Enter **Person Name** (required)
+2. Select a **date**
+3. Choose meal mode:
 
    * **Auto** → Enter Lunch & Dinner counts
    * **Manual** → Enter total meals directly
-3. Enter **price per meal**
-4. Click **Save Record**
-5. View, **edit**, or **delete** records anytime
-6. Use **Reset** to clear inputs (data remains safe)
+4. Enter **price per meal**
+5. Click **Save Record**
+6. View saved records for that person
+7. See **total meals & total amount** summary
+8. **Edit** or **delete** any record as needed
+9. Use **Reset** to clear the form (saved data remains safe)
 
 ---
 
@@ -85,6 +104,7 @@ streamlit run app.py
 * Uses **SQLite**
 * Stored as a single file: `meals.db`
 * Automatically created on first run
+* Supports schema migration (safe updates)
 * Easy to back up or move (just copy the file)
 
 ---
@@ -102,24 +122,28 @@ pandas>=1.5.0
 
 ## 🔒 Notes
 
-* Deleting a record is **per-day**, not the entire database
-* Reset button does **not** delete saved data
+* Records are **isolated per person**
+* Deleting a record removes **only that day’s entry**
+* Reset button clears only the input fields
 * No internet connection required after installation
+* Suitable for personal use or small teams
 
 ---
 
 ## 🔮 Future Enhancements (Optional)
 
-* 📆 Monthly summary & reports
+* 📆 Monthly summary & reports (per person)
+* 📊 Charts (meals vs date)
 * 📤 Export to Excel / CSV
-* 👥 Multi-user or person-wise tracking
-* 🔐 Authentication
+* 👥 Person dropdown selection
+* 🔐 Authentication / login
 * ☁️ Cloud database support
 
 ---
 
 ## 👨‍💻 Author
 
-Built with ❤️ using Streamlit
-Feel free to extend or customize as needed.
+Built with ❤️ using **Streamlit**
+Feel free to fork, extend, and customize as needed.
 
+```
