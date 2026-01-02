@@ -1,13 +1,6 @@
-Nice README already 👍
-I’ll **update it cleanly** to reflect **everything your app actually supports now**, without over-engineering or changing your tone.
+You’re right — your README is **almost perfect**, it just needs to reflect the **latest features you’ve already implemented** (charts, monthly summary, export, feedback system).
 
-### ✅ What I’m adding / correcting
-
-* 👤 **Person-wise tracking (Name-based)**
-* 📊 **Total meals & total amount summary from saved records**
-* ✏️ Clarify **Edit/Delete per person**
-* 🔄 Reset behavior clarification (clears form only)
-* Minor wording polish (no feature changes)
+Below is the **clean, updated README**, same tone, no over-engineering, just accurate.
 
 ---
 
@@ -33,6 +26,10 @@ All data is stored locally using **SQLite**, so no external database setup is re
 - ✏️ Edit existing records
 - 🗑 Delete records (per day, per person)
 - 🔄 Reset input form without deleting saved data
+- 📊 **Charts (Meals vs Date)**
+- 📆 **Monthly summary & reports (per person)**
+- 📤 **Export data to CSV & Excel**
+- 📝 **Feedback system** (name-based feedback for feature requests / issues)
 - ⚡ No external DB, works fully offline
 
 ---
@@ -43,6 +40,7 @@ All data is stored locally using **SQLite**, so no external database setup is re
 - **Streamlit** – UI framework
 - **SQLite** – Local file-based database
 - **Pandas** – Data handling and aggregation
+- **openpyxl** – Excel export support
 
 ---
 
@@ -94,8 +92,11 @@ streamlit run app.py
 5. Click **Save Record**
 6. View saved records for that person
 7. See **total meals & total amount** summary
-8. **Edit** or **delete** any record as needed
-9. Use **Reset** to clear the form (saved data remains safe)
+8. View **charts** and **monthly reports**
+9. **Edit** or **delete** any record as needed
+10. Export data to **CSV / Excel**
+11. Submit **feedback or feature requests**
+12. Use **Reset** to clear the form (saved data remains safe)
 
 ---
 
@@ -105,6 +106,10 @@ streamlit run app.py
 * Stored as a single file: `meals.db`
 * Automatically created on first run
 * Supports schema migration (safe updates)
+* Includes separate tables for:
+
+  * Meal records
+  * User feedback
 * Easy to back up or move (just copy the file)
 
 ---
@@ -114,17 +119,19 @@ streamlit run app.py
 ```txt
 streamlit>=1.31.0
 pandas>=1.5.0
+openpyxl>=3.1.0
 ```
 
-> `sqlite3` and `datetime` are included with Python by default.
+> `sqlite3`, `datetime`, and `io` are included with Python by default.
 
 ---
 
 ## 🔒 Notes
 
 * Records are **isolated per person**
-* Deleting a record removes **only that day’s entry**
+* Edit/Delete operations are **safe and ID-based**
 * Reset button clears only the input fields
+* Feedback is stored separately and can be reviewed by developers
 * No internet connection required after installation
 * Suitable for personal use or small teams
 
@@ -132,12 +139,13 @@ pandas>=1.5.0
 
 ## 🔮 Future Enhancements (Optional)
 
-* 📆 Monthly summary & reports (per person)
-* 📊 Charts (meals vs date)
-* 📤 Export to Excel / CSV
+* 📅 Date-range filtering
+* 📊 Additional charts (bar / pie)
+* 🧾 Bill / invoice generation (PDF)
 * 👥 Person dropdown selection
 * 🔐 Authentication / login
 * ☁️ Cloud database support
+* 📧 Feedback notifications for developers
 
 ---
 
@@ -147,3 +155,5 @@ Built with ❤️ using **Streamlit**
 Feel free to fork, extend, and customize as needed.
 
 ```
+
+

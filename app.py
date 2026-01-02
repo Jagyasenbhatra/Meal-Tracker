@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import date
 import sqlite3
 import pandas as pd
+from io import BytesIO
 
 # --------------------
 # Page setup
@@ -10,7 +11,7 @@ st.set_page_config(page_title="Meal Tracker", layout="centered")
 st.title("🍽️ Daily Meal Tracker")
 
 # --------------------
-# Session defaults (SAFE)
+# Session defaults
 # --------------------
 defaults = {
     "person_name": "",
@@ -21,24 +22,15 @@ defaults = {
     "manual_total": 0,
     "meal_price": 0.0,
 }
-
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
 # --------------------
-# SAFE Reset function
+# Reset function
 # --------------------
 def reset_form():
-    keys_to_clear = [
-        "meal_date",
-        "mode",
-        "lunch",
-        "dinner",
-        "manual_total",
-        "meal_price",
-    ]
-    for k in keys_to_clear:
+    for k in ["meal_date", "mode", "lunch", "dinner", "manual_total", "meal_price"]:
         if k in st.session_state:
             del st.session_state[k]
     st.rerun()
@@ -49,9 +41,6 @@ def reset_form():
 conn = sqlite3.connect("meals.db", check_same_thread=False)
 cursor = conn.cursor()
 
-# --------------------
-# Create table (base)
-# --------------------
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS meals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,21 +56,20 @@ CREATE TABLE IF NOT EXISTS meals (
 conn.commit()
 
 # --------------------
-# DB migration (ADD person_name safely)
+# DB migration (ADD person_name)
 # --------------------
 cursor.execute("PRAGMA table_info(meals)")
-existing_columns = [col[1] for col in cursor.fetchall()]
-
-if "person_name" not in existing_columns:
+cols = [c[1] for c in cursor.fetchall()]
+if "person_name" not in cols:
     cursor.execute("ALTER TABLE meals ADD COLUMN person_name TEXT")
     conn.commit()
 
 # --------------------
-# Name input (FIRST)
+# Name input
 # --------------------
 person_name = st.text_input(
     "👤 Person Name",
-    placeholder="Enter name (e.g. Jagya)",
+    placeholder="Enter name",
     key="person_name"
 ).strip()
 
@@ -101,25 +89,19 @@ mode = st.radio(
 )
 
 if mode == "Auto (Lunch + Dinner)":
-    col1, col2 = st.columns(2)
-    with col1:
+    c1, c2 = st.columns(2)
+    with c1:
         lunch = st.number_input("Lunch Meals", min_value=0, step=1, key="lunch")
-    with col2:
+    with c2:
         dinner = st.number_input("Dinner Meals", min_value=0, step=1, key="dinner")
     total_meals = lunch + dinner
 else:
     total_meals = st.number_input(
-        "Total Meals",
-        min_value=0,
-        step=1,
-        key="manual_total"
+        "Total Meals", min_value=0, step=1, key="manual_total"
     )
 
 meal_price = st.number_input(
-    "Price per Meal (₹)",
-    min_value=0.0,
-    step=1.0,
-    key="meal_price"
+    "Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price"
 )
 
 total_amount = total_meals * meal_price
@@ -127,16 +109,14 @@ total_amount = total_meals * meal_price
 # --------------------
 # Action buttons
 # --------------------
-col_save, col_reset = st.columns(2)
-
-with col_save:
+c1, c2 = st.columns(2)
+with c1:
     if st.button("💾 Save Record"):
         cursor.execute("""
             INSERT INTO meals (
                 person_name, meal_date, mode, lunch, dinner,
                 total_meals, meal_price, total_amount
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             person_name,
             str(meal_date),
@@ -148,77 +128,68 @@ with col_save:
             total_amount
         ))
         conn.commit()
-        st.success("Record saved successfully!")
+        st.success("Record saved!")
 
-with col_reset:
+with c2:
     if st.button("🔄 Reset"):
         reset_form()
 
 # --------------------
-# Summary (current input)
+# Current summary
 # --------------------
 st.divider()
 st.subheader("📊 Meal Summary (Current Entry)")
-st.write(f"**Name:** {person_name}")
 st.write(f"**Date:** {meal_date}")
 st.write(f"**Total Meals:** {total_meals}")
 st.write(f"### 💰 Total Amount: ₹{total_amount}")
 
 # --------------------
-# Records table (per person)
+# Records per person
 # --------------------
 st.divider()
 st.subheader(f"📁 Saved Records — {person_name}")
 
 df = pd.read_sql(
-    "SELECT * FROM meals WHERE person_name=? ORDER BY meal_date DESC",
+    "SELECT * FROM meals WHERE person_name=? ORDER BY meal_date",
     conn,
     params=(person_name,)
 )
 
-# ---- Totals from saved records ----
-total_meals_sum = int(df["total_meals"].sum()) if not df.empty else 0
-total_amount_sum = float(df["total_amount"].sum()) if not df.empty else 0.0
+df["meal_date"] = pd.to_datetime(df["meal_date"])
 
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("🍽️ Total Meals (All Records)", total_meals_sum)
-with col2:
-    st.metric("💰 Total Amount (All Records)", f"₹{total_amount_sum}")
+# ---- Totals ----
+c1, c2 = st.columns(2)
+c1.metric("🍽️ Total Meals", int(df["total_meals"].sum()) if not df.empty else 0)
+c2.metric("💰 Total Amount", f"₹{float(df['total_amount'].sum()) if not df.empty else 0}")
 
 st.dataframe(df, width="stretch")
 
 # --------------------
-# Edit / Delete section
+# ✏️ Edit / 🗑 Delete (FIXED — ID BASED)
 # --------------------
 st.divider()
 st.subheader("✏️ Edit / 🗑 Delete Record")
 
 if not df.empty:
     record_map = {
-        f"{row['meal_date']} (ID {row['id']})": row["id"]
+        f"{row['meal_date'].date()} (ID {row['id']})": row["id"]
         for _, row in df.iterrows()
     }
 
-    selected = st.selectbox("Select a record", record_map.keys())
-    record_id = record_map[selected]
+    selected_label = st.selectbox("Select Record", record_map.keys())
+    record_id = record_map[selected_label]
+
     record = df[df["id"] == record_id].iloc[0]
 
-    col1, col2 = st.columns(2)
-
-    with col1:
+    ec1, ec2 = st.columns(2)
+    with ec1:
         edit_lunch = st.number_input(
-            "Edit Lunch Meals",
-            min_value=0,
-            value=int(record["lunch"] or 0)
+            "Edit Lunch Meals", min_value=0, value=int(record["lunch"] or 0)
         )
         edit_dinner = st.number_input(
-            "Edit Dinner Meals",
-            min_value=0,
-            value=int(record["dinner"] or 0)
+            "Edit Dinner Meals", min_value=0, value=int(record["dinner"] or 0)
         )
-
-    with col2:
+    with ec2:
         edit_price = st.number_input(
             "Edit Price per Meal (₹)",
             min_value=0.0,
@@ -231,9 +202,8 @@ if not df.empty:
     st.info(f"Updated Meals: {edit_total_meals}")
     st.info(f"Updated Amount: ₹{edit_total_amount}")
 
-    col_update, col_delete = st.columns(2)
-
-    with col_update:
+    u1, u2 = st.columns(2)
+    with u1:
         if st.button("✅ Update Record"):
             cursor.execute("""
                 UPDATE meals
@@ -251,11 +221,99 @@ if not df.empty:
             st.success("Record updated!")
             st.rerun()
 
-    with col_delete:
+    with u2:
         if st.button("🗑 Delete Record"):
             cursor.execute("DELETE FROM meals WHERE id=?", (record_id,))
             conn.commit()
             st.warning("Record deleted!")
             st.rerun()
 else:
-    st.info("No records found for this person.")
+    st.info("No records available.")
+
+# --------------------
+# 📊 Chart
+# --------------------
+st.divider()
+st.subheader("📊 Meals vs Date")
+if not df.empty:
+    st.line_chart(df.set_index("meal_date")["total_meals"])
+else:
+    st.info("No data available.")
+
+# --------------------
+# 📆 Monthly Summary
+# --------------------
+st.divider()
+st.subheader("📆 Monthly Summary")
+if not df.empty:
+    df["month"] = df["meal_date"].dt.to_period("M").astype(str)
+    monthly = df.groupby("month").agg(
+        total_meals=("total_meals", "sum"),
+        total_amount=("total_amount", "sum")
+    ).reset_index()
+    st.dataframe(monthly, width="stretch")
+else:
+    st.info("No data available.")
+
+# --------------------
+# 📤 Export
+# --------------------
+st.divider()
+st.subheader("📤 Export Data")
+
+if not df.empty:
+    st.download_button(
+        "⬇️ Download CSV",
+        df.to_csv(index=False).encode("utf-8"),
+        file_name=f"{person_name}_meals.csv",
+        mime="text/csv"
+    )
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False)
+    st.download_button(
+        "⬇️ Download Excel",
+        buffer.getvalue(),
+        file_name=f"{person_name}_meals.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+else:
+    st.info("No data available to export.")
+
+
+
+# ======================================================
+# 🛠️ DEVELOPER / ADMIN FEEDBACK VIEW
+# ======================================================
+st.divider()
+st.header("🛠️ Developer Feedback Inbox")
+
+feedback_df = pd.read_sql(
+    "SELECT * FROM feedback ORDER BY created_at DESC",
+    conn
+)
+
+if not feedback_df.empty:
+    st.dataframe(feedback_df, width="stretch")
+
+    feedback_map = {
+        f"{row['person_name']} | {row['created_at']}": row["id"]
+        for _, row in feedback_df.iterrows()
+    }
+
+    selected_fb = st.selectbox(
+        "Select feedback to delete (after review)",
+        feedback_map.keys()
+    )
+
+    if st.button("🗑 Delete Selected Feedback"):
+        cursor.execute(
+            "DELETE FROM feedback WHERE id=?",
+            (feedback_map[selected_fb],)
+        )
+        conn.commit()
+        st.success("Feedback deleted.")
+        st.rerun()
+else:
+    st.info("No feedback submitted yet.")
