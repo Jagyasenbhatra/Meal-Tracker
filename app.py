@@ -6,7 +6,7 @@ import pandas as pd
 # --------------------
 # Page setup
 # --------------------
-st.set_page_config(page_title="Meal Calculator", layout="centered")
+st.set_page_config(page_title="Jagyasen Personal Meal Calculator", layout="centered")
 st.title("🍽️ Daily Meal Calculator")
 
 # --------------------
