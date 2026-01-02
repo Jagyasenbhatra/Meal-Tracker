@@ -10,7 +10,7 @@ st.set_page_config(page_title="Meal Tracker", layout="centered")
 st.title("🍽️ Daily Meal Tracker")
 
 # --------------------
-# Session defaults
+# Session defaults (SAFE)
 # --------------------
 defaults = {
     "person_name": "",
@@ -27,15 +27,21 @@ for k, v in defaults.items():
         st.session_state[k] = v
 
 # --------------------
-# Reset function
+# SAFE Reset function
 # --------------------
 def reset_form():
-    st.session_state.meal_date = date.today()
-    st.session_state.mode = "Auto (Lunch + Dinner)"
-    st.session_state.lunch = 0
-    st.session_state.dinner = 0
-    st.session_state.manual_total = 0
-    st.session_state.meal_price = 0.0
+    keys_to_clear = [
+        "meal_date",
+        "mode",
+        "lunch",
+        "dinner",
+        "manual_total",
+        "meal_price",
+    ]
+    for k in keys_to_clear:
+        if k in st.session_state:
+            del st.session_state[k]
+    st.rerun()
 
 # --------------------
 # DB connection
@@ -147,13 +153,12 @@ with col_save:
 with col_reset:
     if st.button("🔄 Reset"):
         reset_form()
-        st.rerun()
 
 # --------------------
-# Summary
+# Summary (current input)
 # --------------------
 st.divider()
-st.subheader("📊 Meal Summary")
+st.subheader("📊 Meal Summary (Current Entry)")
 st.write(f"**Name:** {person_name}")
 st.write(f"**Date:** {meal_date}")
 st.write(f"**Total Meals:** {total_meals}")
@@ -170,6 +175,16 @@ df = pd.read_sql(
     conn,
     params=(person_name,)
 )
+
+# ---- Totals from saved records ----
+total_meals_sum = int(df["total_meals"].sum()) if not df.empty else 0
+total_amount_sum = float(df["total_amount"].sum()) if not df.empty else 0.0
+
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("🍽️ Total Meals (All Records)", total_meals_sum)
+with col2:
+    st.metric("💰 Total Amount (All Records)", f"₹{total_amount_sum}")
 
 st.dataframe(df, width="stretch")
 
