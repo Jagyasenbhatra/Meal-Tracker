@@ -6,24 +6,25 @@ import pandas as pd
 # --------------------
 # Page setup
 # --------------------
-st.set_page_config(page_title="Meal Calculator", layout="centered")
-st.title("🍽️ Daily Meal Calculator")
+st.set_page_config(page_title="Meal Tracker", layout="centered")
+st.title("🍽️ Daily Meal Tracker")
 
 # --------------------
 # Session defaults
 # --------------------
-if "meal_date" not in st.session_state:
-    st.session_state.meal_date = date.today()
-if "mode" not in st.session_state:
-    st.session_state.mode = "Auto (Lunch + Dinner)"
-if "lunch" not in st.session_state:
-    st.session_state.lunch = 0
-if "dinner" not in st.session_state:
-    st.session_state.dinner = 0
-if "manual_total" not in st.session_state:
-    st.session_state.manual_total = 0
-if "meal_price" not in st.session_state:
-    st.session_state.meal_price = 0.0
+defaults = {
+    "person_name": "",
+    "meal_date": date.today(),
+    "mode": "Auto (Lunch + Dinner)",
+    "lunch": 0,
+    "dinner": 0,
+    "manual_total": 0,
+    "meal_price": 0.0,
+}
+
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # --------------------
 # Reset function
@@ -42,6 +43,9 @@ def reset_form():
 conn = sqlite3.connect("meals.db", check_same_thread=False)
 cursor = conn.cursor()
 
+# --------------------
+# Create table (base)
+# --------------------
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS meals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,13 +61,32 @@ CREATE TABLE IF NOT EXISTS meals (
 conn.commit()
 
 # --------------------
+# DB migration (ADD person_name safely)
+# --------------------
+cursor.execute("PRAGMA table_info(meals)")
+existing_columns = [col[1] for col in cursor.fetchall()]
+
+if "person_name" not in existing_columns:
+    cursor.execute("ALTER TABLE meals ADD COLUMN person_name TEXT")
+    conn.commit()
+
+# --------------------
+# Name input (FIRST)
+# --------------------
+person_name = st.text_input(
+    "👤 Person Name",
+    placeholder="Enter name (e.g. Jagya)",
+    key="person_name"
+).strip()
+
+if not person_name:
+    st.warning("Please enter a name to continue.")
+    st.stop()
+
+# --------------------
 # Input section
 # --------------------
-meal_date = st.date_input(
-    "Select Date",
-    value=st.session_state.meal_date,
-    key="meal_date"
-)
+meal_date = st.date_input("Select Date", key="meal_date")
 
 mode = st.radio(
     "Meal Count Mode",
@@ -104,11 +127,12 @@ with col_save:
     if st.button("💾 Save Record"):
         cursor.execute("""
             INSERT INTO meals (
-                meal_date, mode, lunch, dinner,
+                person_name, meal_date, mode, lunch, dinner,
                 total_meals, meal_price, total_amount
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
+            person_name,
             str(meal_date),
             mode,
             lunch if mode.startswith("Auto") else None,
@@ -130,19 +154,21 @@ with col_reset:
 # --------------------
 st.divider()
 st.subheader("📊 Meal Summary")
+st.write(f"**Name:** {person_name}")
 st.write(f"**Date:** {meal_date}")
 st.write(f"**Total Meals:** {total_meals}")
 st.write(f"### 💰 Total Amount: ₹{total_amount}")
 
 # --------------------
-# Records table
+# Records table (per person)
 # --------------------
 st.divider()
-st.subheader("📁 Saved Records")
+st.subheader(f"📁 Saved Records — {person_name}")
 
 df = pd.read_sql(
-    "SELECT * FROM meals ORDER BY meal_date DESC",
-    conn
+    "SELECT * FROM meals WHERE person_name=? ORDER BY meal_date DESC",
+    conn,
+    params=(person_name,)
 )
 
 st.dataframe(df, width="stretch")
@@ -169,19 +195,19 @@ if not df.empty:
         edit_lunch = st.number_input(
             "Edit Lunch Meals",
             min_value=0,
-            value=record["lunch"] if record["lunch"] else 0
+            value=int(record["lunch"] or 0)
         )
         edit_dinner = st.number_input(
             "Edit Dinner Meals",
             min_value=0,
-            value=record["dinner"] if record["dinner"] else 0
+            value=int(record["dinner"] or 0)
         )
 
     with col2:
         edit_price = st.number_input(
             "Edit Price per Meal (₹)",
             min_value=0.0,
-            value=record["meal_price"]
+            value=float(record["meal_price"])
         )
 
     edit_total_meals = edit_lunch + edit_dinner
@@ -217,4 +243,4 @@ if not df.empty:
             st.warning("Record deleted!")
             st.rerun()
 else:
-    st.info("No records found.")
+    st.info("No records found for this person.")
