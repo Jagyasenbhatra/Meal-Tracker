@@ -1,10 +1,3 @@
-You’re right — your README is **almost perfect**, it just needs to reflect the **latest features you’ve already implemented** (charts, monthly summary, export, feedback system).
-
-Below is the **clean, updated README**, same tone, no over-engineering, just accurate.
-
----
-
-```md
 # 🍽️ Meal-Tracker
 
 A simple **Streamlit-based Meal Tracking application** that helps you record daily meals, calculate costs, and manage records **per person**.
@@ -54,7 +47,6 @@ Meal-Tracker/
 │── requirements.txt
 │── README.md
 
-````
 
 ---
 
