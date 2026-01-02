@@ -1,8 +1,12 @@
 import streamlit as st
-from datetime import date
+from datetime import date,datetime
 import sqlite3
 import pandas as pd
 from io import BytesIO
+import os
+
+
+ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
 
 # --------------------
 # Page setup
@@ -25,6 +29,10 @@ defaults = {
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
+
+
+if "admin_authenticated" not in st.session_state:
+    st.session_state.admin_authenticated = False
 
 # --------------------
 # Reset function
@@ -282,38 +290,143 @@ else:
     st.info("No data available to export.")
 
 
+# # ======================================================
+# # 📝 FEEDBACK SECTION
+# # ======================================================
+# st.divider()
+# st.header("📝 Feedback / Suggestions")
+
+# with st.form("feedback_form"):
+#     feedback_text = st.text_area(
+#         "Your feedback (feature request / issue / suggestion)",
+#         placeholder="Example: Add monthly bill export, improve UI..."
+#     )
+#     rating = st.slider("Overall Experience Rating", 1, 5, 4)
+
+#     submitted = st.form_submit_button("📨 Submit Feedback")
+
+#     if submitted:
+#         if not feedback_text.strip():
+#             st.warning("Feedback message cannot be empty.")
+#         else:
+#             cursor.execute("""
+#                 INSERT INTO feedback (person_name, message, rating, created_at)
+#                 VALUES (?, ?, ?, ?)
+#             """, (
+#                 person_name,
+#                 feedback_text.strip(),
+#                 rating,
+#                 datetime.now().isoformat()
+#             ))
+#             conn.commit()
+#             st.success("Thank you! Your feedback has been saved 🙌")
+
+# # ======================================================
+# # 🛠️ DEVELOPER / ADMIN FEEDBACK VIEW
+# # ======================================================
+# st.divider()
+# st.header("🛠️ Developer Feedback Inbox")
+
+# feedback_df = pd.read_sql(
+#     "SELECT * FROM feedback ORDER BY created_at DESC",
+#     conn
+# )
+
+# if not feedback_df.empty:
+#     st.dataframe(feedback_df, width="stretch")
+
+#     feedback_map = {
+#         f"{row['person_name']} | {row['created_at']}": row["id"]
+#         for _, row in feedback_df.iterrows()
+#     }
+
+#     selected_fb = st.selectbox(
+#         "Select feedback to delete (after review)",
+#         feedback_map.keys()
+#     )
+
+#     if st.button("🗑 Delete Selected Feedback"):
+#         cursor.execute(
+#             "DELETE FROM feedback WHERE id=?",
+#             (feedback_map[selected_fb],)
+#         )
+#         conn.commit()
+#         st.success("Feedback deleted.")
+#         st.rerun()
+# else:
+#     st.info("No feedback submitted yet.")
 
 # ======================================================
-# 🛠️ DEVELOPER / ADMIN FEEDBACK VIEW
+# 📝 FEEDBACK (USER)
 # ======================================================
 st.divider()
-st.header("🛠️ Developer Feedback Inbox")
+st.header("📝 Feedback / Suggestions")
 
-feedback_df = pd.read_sql(
-    "SELECT * FROM feedback ORDER BY created_at DESC",
-    conn
-)
+with st.form("feedback_form"):
+    feedback_text = st.text_area(
+        "Your feedback (feature request / issue / suggestion)",
+        placeholder="Example: Add PDF bill, monthly export..."
+    )
+    rating = st.slider("Overall Experience Rating", 1, 5, 4)
 
-if not feedback_df.empty:
-    st.dataframe(feedback_df, width="stretch")
+    if st.form_submit_button("📨 Submit Feedback"):
+        if not feedback_text.strip():
+            st.warning("Feedback message cannot be empty.")
+        else:
+            cursor.execute("""
+                INSERT INTO feedback (person_name, message, rating, created_at)
+                VALUES (?, ?, ?, ?)
+            """, (
+                person_name,
+                feedback_text.strip(),
+                rating,
+                datetime.now().isoformat()
+            ))
+            conn.commit()
+            st.success("Thank you! Feedback saved 🙌")
 
-    feedback_map = {
-        f"{row['person_name']} | {row['created_at']}": row["id"]
-        for _, row in feedback_df.iterrows()
-    }
+# ======================================================
+# 🔐 ADMIN FEEDBACK PANEL
+# ======================================================
+st.divider()
+st.header("🔐 Admin Feedback Panel")
 
-    selected_fb = st.selectbox(
-        "Select feedback to delete (after review)",
-        feedback_map.keys()
+if not st.session_state.admin_authenticated:
+    admin_pass = st.text_input("Enter Admin Password", type="password")
+
+    if st.button("🔓 Login as Admin"):
+        if admin_pass == ADMIN_PASSWORD:
+            st.session_state.admin_authenticated = True
+            st.success("Admin access granted")
+            st.rerun()
+        else:
+            st.error("Incorrect password")
+else:
+    st.success("Logged in as Admin")
+
+    feedback_df = pd.read_sql(
+        "SELECT * FROM feedback ORDER BY created_at DESC",
+        conn
     )
 
-    if st.button("🗑 Delete Selected Feedback"):
-        cursor.execute(
-            "DELETE FROM feedback WHERE id=?",
-            (feedback_map[selected_fb],)
-        )
-        conn.commit()
-        st.success("Feedback deleted.")
+    if not feedback_df.empty:
+        st.dataframe(feedback_df, width="stretch")
+
+        fb_map = {
+            f"{row['person_name']} | {row['created_at']}": row["id"]
+            for _, row in feedback_df.iterrows()
+        }
+
+        selected_fb = st.selectbox("Select feedback to delete", fb_map.keys())
+
+        if st.button("🗑 Delete Selected Feedback"):
+            cursor.execute("DELETE FROM feedback WHERE id=?", (fb_map[selected_fb],))
+            conn.commit()
+            st.success("Feedback deleted")
+            st.rerun()
+    else:
+        st.info("No feedback available.")
+
+    if st.button("🚪 Logout Admin"):
+        st.session_state.admin_authenticated = False
         st.rerun()
-else:
-    st.info("No feedback submitted yet.")
