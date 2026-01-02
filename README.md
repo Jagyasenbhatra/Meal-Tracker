@@ -154,6 +154,4 @@ openpyxl>=3.1.0
 Built with ❤️ using **Streamlit**
 Feel free to fork, extend, and customize as needed.
 
-```
-
 
