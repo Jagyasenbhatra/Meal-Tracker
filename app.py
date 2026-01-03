@@ -173,6 +173,111 @@ c2.metric("💰 Total Amount", f"₹{float(df['total_amount'].sum()) if not df.e
 st.dataframe(df, width="stretch")
 
 # --------------------
+# 📤 Export
+# --------------------
+st.divider()
+st.subheader("📤 Export Data")
+
+if not df.empty:
+    st.download_button(
+        "⬇️ Download CSV",
+        df.to_csv(index=False).encode("utf-8"),
+        file_name=f"{person_name}_meals.csv",
+        mime="text/csv"
+    )
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False)
+    st.download_button(
+        "⬇️ Download Excel",
+        buffer.getvalue(),
+        file_name=f"{person_name}_meals.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+else:
+    st.info("No data available to export.")
+
+# --------------------
+# 📆 Month-wise Filter
+# --------------------
+st.divider()
+st.subheader("📆 Filter Records by Month")
+
+if not df.empty:
+    df["year"] = df["meal_date"].dt.year
+    df["month_num"] = df["meal_date"].dt.month
+    df["month_name"] = df["meal_date"].dt.strftime("%B")
+
+    col_y, col_m = st.columns(2)
+
+    with col_y:
+        selected_year = st.selectbox(
+            "Select Year",
+            sorted(df["year"].unique(), reverse=True)
+        )
+
+    with col_m:
+        months_for_year = df[df["year"] == selected_year][
+            ["month_num", "month_name"]
+        ].drop_duplicates().sort_values("month_num")
+
+        selected_month = st.selectbox(
+            "Select Month",
+            months_for_year["month_name"].tolist()
+        )
+
+    selected_month_num = months_for_year[
+        months_for_year["month_name"] == selected_month
+    ]["month_num"].iloc[0]
+
+    monthly_df = df[
+        (df["year"] == selected_year) &
+        (df["month_num"] == selected_month_num)
+    ]
+
+    st.subheader(f"📁 Records for {selected_month} {selected_year}")
+
+    # Monthly totals
+    c1, c2 = st.columns(2)
+    c1.metric("🍽️ Total Meals (Month)", int(monthly_df["total_meals"].sum()))
+    c2.metric("💰 Total Amount (Month)", f"₹{float(monthly_df['total_amount'].sum())}")
+
+    st.dataframe(monthly_df, width="stretch")
+else:
+    st.info("No records available for filtering.")
+
+# --------------------
+# 📤 Monthly Export
+# --------------------
+st.subheader("📤 Export Monthly Data")
+
+if not df.empty and not monthly_df.empty:
+    # CSV
+    st.download_button(
+        "⬇️ Download Monthly CSV",
+        monthly_df.to_csv(index=False).encode("utf-8"),
+        file_name=f"{person_name}_{selected_year}_{selected_month}.csv",
+        mime="text/csv"
+    )
+
+    # Excel
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        monthly_df.to_excel(writer, index=False, sheet_name="Monthly Meals")
+
+    st.download_button(
+        "⬇️ Download Monthly Excel",
+        buffer.getvalue(),
+        file_name=f"{person_name}_{selected_year}_{selected_month}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+else:
+    st.info("No monthly data to export.")
+
+
+
+# --------------------
 # ✏️ Edit / 🗑 Delete (FIXED — ID BASED)
 # --------------------
 st.divider()
@@ -252,109 +357,46 @@ else:
 # 📆 Monthly Summary
 # --------------------
 st.divider()
-st.subheader("📆 Monthly Summary")
+st.subheader("📆 Monthly Summary (All Months)")
+
 if not df.empty:
     df["month"] = df["meal_date"].dt.to_period("M").astype(str)
+
     monthly = df.groupby("month").agg(
         total_meals=("total_meals", "sum"),
         total_amount=("total_amount", "sum")
     ).reset_index()
+
     st.dataframe(monthly, width="stretch")
-else:
-    st.info("No data available.")
 
-# --------------------
-# 📤 Export
-# --------------------
-st.divider()
-st.subheader("📤 Export Data")
+    # --------------------
+    # 📤 Export Monthly Summary (ALL)
+    # --------------------
+    st.subheader("📤 Export Monthly Summary")
 
-if not df.empty:
+    # CSV export
     st.download_button(
-        "⬇️ Download CSV",
-        df.to_csv(index=False).encode("utf-8"),
-        file_name=f"{person_name}_meals.csv",
+        "⬇️ Download all Monthly Summary CSV",
+        monthly.to_csv(index=False).encode("utf-8"),
+        file_name=f"{person_name}_monthly_summary.csv",
         mime="text/csv"
     )
 
+    # Excel export
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False)
+        monthly.to_excel(writer, index=False, sheet_name="Monthly Summary")
+
     st.download_button(
-        "⬇️ Download Excel",
+        "⬇️ Download all Monthly Summary Excel",
         buffer.getvalue(),
-        file_name=f"{person_name}_meals.xlsx",
+        file_name=f"{person_name}_monthly_summary.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 else:
-    st.info("No data available to export.")
+    st.info("No data available.")
 
-
-# # ======================================================
-# # 📝 FEEDBACK SECTION
-# # ======================================================
-# st.divider()
-# st.header("📝 Feedback / Suggestions")
-
-# with st.form("feedback_form"):
-#     feedback_text = st.text_area(
-#         "Your feedback (feature request / issue / suggestion)",
-#         placeholder="Example: Add monthly bill export, improve UI..."
-#     )
-#     rating = st.slider("Overall Experience Rating", 1, 5, 4)
-
-#     submitted = st.form_submit_button("📨 Submit Feedback")
-
-#     if submitted:
-#         if not feedback_text.strip():
-#             st.warning("Feedback message cannot be empty.")
-#         else:
-#             cursor.execute("""
-#                 INSERT INTO feedback (person_name, message, rating, created_at)
-#                 VALUES (?, ?, ?, ?)
-#             """, (
-#                 person_name,
-#                 feedback_text.strip(),
-#                 rating,
-#                 datetime.now().isoformat()
-#             ))
-#             conn.commit()
-#             st.success("Thank you! Your feedback has been saved 🙌")
-
-# # ======================================================
-# # 🛠️ DEVELOPER / ADMIN FEEDBACK VIEW
-# # ======================================================
-# st.divider()
-# st.header("🛠️ Developer Feedback Inbox")
-
-# feedback_df = pd.read_sql(
-#     "SELECT * FROM feedback ORDER BY created_at DESC",
-#     conn
-# )
-
-# if not feedback_df.empty:
-#     st.dataframe(feedback_df, width="stretch")
-
-#     feedback_map = {
-#         f"{row['person_name']} | {row['created_at']}": row["id"]
-#         for _, row in feedback_df.iterrows()
-#     }
-
-#     selected_fb = st.selectbox(
-#         "Select feedback to delete (after review)",
-#         feedback_map.keys()
-#     )
-
-#     if st.button("🗑 Delete Selected Feedback"):
-#         cursor.execute(
-#             "DELETE FROM feedback WHERE id=?",
-#             (feedback_map[selected_fb],)
-#         )
-#         conn.commit()
-#         st.success("Feedback deleted.")
-#         st.rerun()
-# else:
-#     st.info("No feedback submitted yet.")
 
 # ======================================================
 # 📝 FEEDBACK (USER)
