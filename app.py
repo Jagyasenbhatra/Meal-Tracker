@@ -284,6 +284,54 @@ st.subheader("📊 Meals vs Date")
 if not df.empty:
     st.line_chart(df.set_index("meal_date")["total_meals"])
 
+# --------------------
+# 📆 Monthly Summary (All Months)
+# --------------------
+st.divider()
+st.subheader("📆 Monthly Summary")
+
+if not df.empty:
+    df["month"] = df["meal_date"].dt.to_period("M").astype(str)
+
+    monthly = (
+        df.groupby("month")
+        .agg(
+            total_meals=("total_meals", "sum"),
+            total_amount=("total_amount", "sum")
+        )
+        .reset_index()
+        .sort_values("month")
+    )
+
+    st.dataframe(monthly, width="stretch")
+
+    # --------------------
+    # 📤 Export Monthly Summary
+    # --------------------
+    st.subheader("📤 Export Monthly Summary")
+
+    st.download_button(
+        "⬇️ Download Monthly Summary CSV",
+        monthly.to_csv(index=False).encode("utf-8"),
+        file_name=f"{person_name}_monthly_summary.csv",
+        mime="text/csv"
+    )
+
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        monthly.to_excel(writer, index=False, sheet_name="Monthly Summary")
+
+    st.download_button(
+        "⬇️ Download Monthly Summary Excel",
+        buffer.getvalue(),
+        file_name=f"{person_name}_monthly_summary.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+else:
+    st.info("No data available.")
+
+
 # ======================================================
 # Feedback
 # ======================================================
