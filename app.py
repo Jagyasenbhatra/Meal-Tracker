@@ -221,7 +221,6 @@ if not df.empty:
             logger.warning(f"Meal deleted | id={record_id}")
             st.warning("Record deleted!")
             st.rerun()
-
 # ======================================================
 # Month-wise Filter
 # ======================================================
@@ -236,30 +235,60 @@ if not df.empty:
     col_y, col_m = st.columns(2)
 
     with col_y:
-        selected_year = st.selectbox("Select Year", sorted(df["year"].unique(), reverse=True))
-
-    with col_m:
-        months_for_year = (
-            df[df["year"] == selected_year][["month_num", "month_name"]]
-            .drop_duplicates()
-            .sort_values("month_num")
+        selected_year = st.selectbox(
+            "Select Year",
+            sorted(df["year"].unique(), reverse=True)
         )
-        selected_month = st.selectbox("Select Month", months_for_year["month_name"].tolist())
 
-    selected_month_num = months_for_year[
-        months_for_year["month_name"] == selected_month
-    ]["month_num"].iloc[0]
-
-    monthly_df = df[
-        (df["year"] == selected_year) &
-        (df["month_num"] == selected_month_num)
-    ]
-
-    logger.info(
-        f"Monthly filter | {selected_month} {selected_year} | rows={len(monthly_df)}"
+    months_for_year = (
+        df[df["year"] == selected_year][["month_num", "month_name"]]
+        .drop_duplicates()
+        .sort_values("month_num")
     )
 
-    st.dataframe(monthly_df, width="stretch")
+    if months_for_year.empty:
+        logger.warning(f"No months found for year {selected_year}")
+        st.info("No records found for the selected year.")
+    else:
+        with col_m:
+            selected_month = st.selectbox(
+                "Select Month",
+                months_for_year["month_name"].tolist()
+            )
+
+        selected_month_num = months_for_year[
+            months_for_year["month_name"] == selected_month
+        ]["month_num"].iloc[0]
+
+        monthly_df = df[
+            (df["year"] == selected_year) &
+            (df["month_num"] == selected_month_num)
+        ]
+
+        logger.info(
+            f"Monthly filter applied | {selected_month} {selected_year} | rows={len(monthly_df)}"
+        )
+
+        if monthly_df.empty:
+            st.info("No records available for the selected month.")
+        else:
+            # Monthly totals
+            c1, c2 = st.columns(2)
+            c1.metric(
+                "🍽️ Total Meals (Month)",
+                int(monthly_df["total_meals"].sum())
+            )
+            c2.metric(
+                "💰 Total Amount (Month)",
+                f"₹{float(monthly_df['total_amount'].sum())}"
+            )
+
+            st.dataframe(monthly_df, width="stretch")
+
+else:
+    logger.info("Monthly filter skipped — no data available")
+    st.info("No records available.")
+
 
 # ======================================================
 # Export Monthly
