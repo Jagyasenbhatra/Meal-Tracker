@@ -159,3 +159,7 @@ openpyxl>=3.1.0
 * 📊 MongoDB aggregation-based analytics
 
 
+## 👨‍💻 Author
+
+Developed by **Jagyasen**
+Backend Engineer | Python | Streamlit | Databases
