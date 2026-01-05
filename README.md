@@ -2,7 +2,7 @@
 
 A **Streamlit-based Meal Tracking application** that helps you record daily meals, calculate costs, and manage records **per person**.
 
-The app now uses **MongoDB** for storage, making it scalable, schema-flexible, and cloud-ready while keeping the UI simple and fast.
+The app uses **MongoDB** for storage and a centralized logging system for tracking all important actions like save, update, delete, exports, feedback, and admin operations—making it production-ready, debuggable, and scalable.
 
 ---
 
@@ -26,6 +26,7 @@ The app now uses **MongoDB** for storage, making it scalable, schema-flexible, a
 * 📝 **Feedback system** (user feedback with ratings)
 * 🔐 **Admin feedback panel** (password protected)
 * 🔄 Reset input form without deleting saved data
+* 🪵 **Centralized logging** for all major actions (save, update, delete, export, feedback, admin)
 
 ---
 
@@ -37,6 +38,7 @@ The app now uses **MongoDB** for storage, making it scalable, schema-flexible, a
 * **PyMongo** – MongoDB client
 * **Pandas** – Data handling & aggregation
 * **openpyxl** – Excel export support
+* **logging** – Application logging (via `logger.py`)
 
 ---
 
@@ -45,6 +47,7 @@ The app now uses **MongoDB** for storage, making it scalable, schema-flexible, a
 ```
 Meal-Tracker/
 │── app.py                  # Main Streamlit app
+│── logger.py               # Centralized logging configuration
 │── db_connection.py        # MongoDB connection
 │── requirements.txt
 │── README.md
@@ -108,6 +111,8 @@ streamlit run app.py
 11. Submit **feedback**
 12. Admin can view/delete feedback via **Admin Panel**
 
+All actions are automatically logged via `logger.py`.
+
 ---
 
 ## 🧠 Database Details
@@ -121,6 +126,24 @@ streamlit run app.py
 * Date stored in ISO format
 * Fully scalable & cloud-ready
 * Works well with multi-user setups
+
+---
+
+## 🪵 Logging Details
+
+* Centralized logging using **`logger.py`**
+* Logs key actions:
+
+  * Record save / update / delete
+  * Data export (CSV / Excel / monthly)
+  * Feedback submission & deletion
+  * Admin login / logout
+* Helps with:
+
+  * Debugging
+  * Auditing
+  * Production monitoring
+* Can be extended to file-based or cloud logging
 
 ---
 
@@ -142,6 +165,7 @@ openpyxl>=3.1.0
 * Reset clears only form inputs
 * Feedback is stored separately
 * Admin access is password-protected
+* Logging does not affect UI or performance
 * Suitable for personal use or small teams
 * MongoDB Atlas enables cloud usage
 
@@ -157,7 +181,9 @@ openpyxl>=3.1.0
 * ☁️ Role-based access
 * 📧 Email notifications for feedback
 * 📊 MongoDB aggregation-based analytics
+* ☁️ Centralized cloud logging (CloudWatch / ELK)
 
+---
 
 ## 👨‍💻 Author
 
