@@ -29,15 +29,15 @@ jobs:
 
       - name: Run black (format check)
         run: |
-          black app --check
+          black . --check
 
       - name: Run flake8
         run: |
-          flake8 app --max-line-length=100 --ignore=E203,W503
+          flake8 . --max-line-length=100 --ignore=E203,W503
 
 
   # --------------------------------------------------
-  # Job 2: App Tests (Optional)
+  # Job 2: Tests (Optional)
   # --------------------------------------------------
   test:
     name: Streamlit App Tests
@@ -63,7 +63,7 @@ jobs:
 
 
   # --------------------------------------------------
-  # Job 3: Build Streamlit Docker Image
+  # Job 3: Build Docker Image
   # --------------------------------------------------
   docker-build:
     name: Build Streamlit Docker Image
@@ -78,6 +78,4 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build \
-            -t streamlit-app:latest \
-            -f Dockerfile .
+          docker build -t meal-tracker:latest .
