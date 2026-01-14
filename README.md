@@ -33,27 +33,32 @@ The app uses **MongoDB** for storage and a centralized logging system for tracki
 ## 📸 Screenshots
 
 ### 🏠 Home Page
+
 ![Home Page](screenshots/home_page.png)
 
 ### 🍽 Meal Entry Form
+
 ![Meal Entry Form](screenshots/meal_entry_form.png)
 
 ### 📊 Meal Summary & Reports
+
 ![Meal Summary](screenshots/meal_summary.png)
 
 ### 📝 User Feedback
+
 ![User Feedback](screenshots/user_feedback.png)
 
+---
 
 ## 🛠️ Tech Stack
 
 * **Python 3.9+**
-* **Streamlit** – UI framework
-* **MongoDB** – NoSQL database
-* **PyMongo** – MongoDB client
-* **Pandas** – Data handling & aggregation
-* **openpyxl** – Excel export support
-* **logging** – Application logging (via `logger.py`)
+* **Streamlit**
+* **MongoDB**
+* **PyMongo**
+* **Pandas**
+* **openpyxl**
+* **logging**
 
 ---
 
@@ -61,13 +66,18 @@ The app uses **MongoDB** for storage and a centralized logging system for tracki
 
 ```
 Meal-Tracker/
-│── app.py                  # Main Streamlit app
-│── logger.py               # Centralized logging configuration
-│── db_connection.py        # MongoDB connection
-│── requirements.txt
-│── README.md
-│── .streamlit/
-│   └── secrets.toml        # Mongo URI & admin password
+├── app.py                  ✅ Streamlit entry point
+├── db_connection.py        ✅ MongoDB logic
+├── logger.py               ✅ Centralized logging
+├── requirements.txt        ✅ Dependencies
+├── Dockerfile              ✅ Container support
+├── README.md               ✅ Docs
+├── .streamlit/
+│   └── secrets.toml        ✅ Secrets (local/cloud)
+├── .github/workflows/
+│   └── ci.yml              ✅ CI pipeline
+├── screenshots/            ✅ README assets
+
 ```
 
 ---
@@ -96,8 +106,6 @@ MONGO_URI = ""
 ADMIN_PASSWORD = ""
 ```
 
-> You can use **MongoDB Atlas (free tier)** or a local MongoDB instance.
-
 ---
 
 ### 4️⃣ Run the app
@@ -110,55 +118,90 @@ streamlit run app.py
 
 ## 📋 How to Use
 
-1. Enter **Person Name** (required)
-2. Select a **date**
-3. Choose meal mode:
-
-   * **Auto** → Enter Lunch & Dinner
-   * **Manual** → Enter total meals
+1. Enter **Person Name**
+2. Select **date**
+3. Choose meal mode (Auto / Manual)
 4. Enter **price per meal**
-5. Click **Save Record**
-6. View saved records for that person
-7. Check **total meals & total amount**
-8. Use **monthly filter** to view reports
-9. Edit or delete any record
-10. Export data to **CSV / Excel**
-11. Submit **feedback**
-12. Admin can view/delete feedback via **Admin Panel**
+5. Save record
+6. View totals & reports
+7. Edit / delete records
+8. Export data
+9. Submit feedback
+10. Admin manages feedback
 
-All actions are automatically logged via `logger.py`.
+All actions are logged via `logger.py`.
 
 ---
 
 ## 🧠 Database Details
 
-* Uses **MongoDB**
-* Collections:
+* MongoDB collections:
 
   * `meals`
   * `feedback`
-* No schema migrations required
-* Date stored in ISO format
-* Fully scalable & cloud-ready
-* Works well with multi-user setups
+* ObjectId-based updates
+* Cloud-ready & scalable
 
 ---
 
 ## 🪵 Logging Details
 
-* Centralized logging using **`logger.py`**
-* Logs key actions:
+* Centralized logging via `logger.py`
+* Tracks:
 
-  * Record save / update / delete
-  * Data export (CSV / Excel / monthly)
-  * Feedback submission & deletion
-  * Admin login / logout
-* Helps with:
+  * Save / update / delete
+  * Export actions
+  * Feedback activity
+  * Admin access
+* Useful for debugging & auditing
 
-  * Debugging
-  * Auditing
-  * Production monitoring
-* Can be extended to file-based or cloud logging
+---
+
+## 🔁 CI/CD & Deployment
+
+This project includes **automated CI jobs** using **GitHub Actions** and supports **deployment on Streamlit Cloud**.
+
+### ✅ Continuous Integration (CI)
+
+On every **push or pull request** to `main` or `develop`, the CI pipeline runs:
+
+* 🧹 **Black** – code formatting check
+* 🔍 **Flake8** – linting
+* 🧪 **Pytest** – test execution (optional)
+* 🐳 **Docker build** – validates container readiness
+
+CI workflow file:
+
+```
+.github/workflows/ci.yml
+```
+
+This ensures code quality and prevents broken deployments.
+
+---
+
+### ☁️ Deployment on Streamlit Cloud
+
+The app can be deployed directly on **Streamlit Cloud**.
+
+**Steps:**
+
+1. Push code to `main`
+2. Create a new app on Streamlit Cloud
+3. Select this GitHub repository
+4. Set:
+
+   * **Main file**: `app.py`
+   * **Python version**: `3.10+`
+5. Add secrets:
+
+   ```toml
+   MONGO_URI = ""
+   ADMIN_PASSWORD = ""
+   ```
+6. Deploy 🚀
+
+Once CI passes, Streamlit Cloud pulls the latest code and deploys automatically.
 
 ---
 
@@ -175,32 +218,27 @@ openpyxl>=3.1.0
 
 ## 🔒 Notes
 
-* Records are **isolated per person**
-* Edit/Delete operations are **ObjectId-based**
-* Reset clears only form inputs
-* Feedback is stored separately
+* Records are isolated per person
+* Reset clears only input fields
 * Admin access is password-protected
-* Logging does not affect UI or performance
-* Suitable for personal use or small teams
-* MongoDB Atlas enables cloud usage
+* MongoDB Atlas supported
+* Suitable for personal or small-team use
 
 ---
 
 ## 🔮 Future Enhancements
 
-* 📅 Date-range filtering
-* 📊 Advanced charts (bar / pie)
-* 🧾 PDF bill / invoice generation
-* 👥 Person dropdown selection
-* 🔐 User authentication
-* ☁️ Role-based access
-* 📧 Email notifications for feedback
-* 📊 MongoDB aggregation-based analytics
-* ☁️ Centralized cloud logging (CloudWatch / ELK)
+* Date-range filtering
+* Advanced charts
+* PDF invoice generation
+* Authentication & roles
+* Email notifications
+* MongoDB aggregation analytics
+* Cloud logging (ELK / CloudWatch)
 
 ---
 
 ## 👨‍💻 Author
 
-Developed by **Jagyasen**
+**Jagyasen**
 Backend Engineer | Python | Streamlit | Databases
