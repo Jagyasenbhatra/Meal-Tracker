@@ -7,7 +7,7 @@ from logger import get_logger
 from db_connection import meals_col, feedback_col
 
 
-logger =get_logger()
+logger = get_logger()
 
 ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
 
@@ -33,6 +33,7 @@ for k, v in defaults.items():
 
 st.session_state.setdefault("admin_authenticated", False)
 
+
 # ======================================================
 # Reset
 # ======================================================
@@ -41,6 +42,7 @@ def reset_form():
     for k in ["meal_date", "mode", "lunch", "dinner", "manual_total", "meal_price"]:
         st.session_state.pop(k, None)
     st.rerun()
+
 
 # ======================================================
 # Name input
@@ -59,9 +61,7 @@ logger.info(f"User active | person={person_name}")
 meal_date = st.date_input("Select Date", key="meal_date")
 
 mode = st.radio(
-    "Meal Count Mode",
-    ["Auto (Lunch + Dinner)", "Manual (Total Meals)"],
-    key="mode"
+    "Meal Count Mode", ["Auto (Lunch + Dinner)", "Manual (Total Meals)"], key="mode"
 )
 
 if mode.startswith("Auto"):
@@ -72,9 +72,13 @@ if mode.startswith("Auto"):
         dinner = st.number_input("Dinner Meals", min_value=0, step=1, key="dinner")
     total_meals = lunch + dinner
 else:
-    total_meals = st.number_input("Total Meals", min_value=0, step=1, key="manual_total")
+    total_meals = st.number_input(
+        "Total Meals", min_value=0, step=1, key="manual_total"
+    )
 
-meal_price = st.number_input("Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price")
+meal_price = st.number_input(
+    "Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price"
+)
 total_amount = total_meals * meal_price
 
 # ======================================================
@@ -83,17 +87,19 @@ total_amount = total_meals * meal_price
 c1, c2 = st.columns(2)
 with c1:
     if st.button("💾 Save Record"):
-        meals_col.insert_one({
-            "person_name": person_name,
-            "meal_date": meal_date.isoformat(),
-            "mode": mode,
-            "lunch": lunch if mode.startswith("Auto") else None,
-            "dinner": dinner if mode.startswith("Auto") else None,
-            "total_meals": total_meals,
-            "meal_price": meal_price,
-            "total_amount": total_amount,
-            "created_at": datetime.utcnow()
-        })
+        meals_col.insert_one(
+            {
+                "person_name": person_name,
+                "meal_date": meal_date.isoformat(),
+                "mode": mode,
+                "lunch": lunch if mode.startswith("Auto") else None,
+                "dinner": dinner if mode.startswith("Auto") else None,
+                "total_meals": total_meals,
+                "meal_price": meal_price,
+                "total_amount": total_amount,
+                "created_at": datetime.utcnow(),
+            }
+        )
 
         logger.info(
             f"Meal saved | person={person_name} | date={meal_date} "
@@ -120,9 +126,7 @@ logger.info("Displayed current entry summary")
 # ======================================================
 # Fetch records
 # ======================================================
-records = list(
-    meals_col.find({"person_name": person_name}).sort("meal_date", 1)
-)
+records = list(meals_col.find({"person_name": person_name}).sort("meal_date", 1))
 logger.info(f"Fetched records | count={len(records)}")
 
 df = pd.DataFrame(records)
@@ -157,7 +161,7 @@ if not df.empty:
     st.download_button(
         "⬇️ Download CSV",
         df.to_csv(index=False).encode("utf-8"),
-        file_name=f"{person_name}_meals.csv"
+        file_name=f"{person_name}_meals.csv",
     )
 
     buffer = BytesIO()
@@ -165,9 +169,7 @@ if not df.empty:
         df.to_excel(writer, index=False)
 
     st.download_button(
-        "⬇️ Download Excel",
-        buffer.getvalue(),
-        file_name=f"{person_name}_meals.xlsx"
+        "⬇️ Download Excel", buffer.getvalue(), file_name=f"{person_name}_meals.xlsx"
     )
 
 # ======================================================
@@ -189,10 +191,16 @@ if not df.empty:
 
     ec1, ec2 = st.columns(2)
     with ec1:
-        edit_lunch = st.number_input("Edit Lunch", min_value=0, value=int(record["lunch"] or 0))
-        edit_dinner = st.number_input("Edit Dinner", min_value=0, value=int(record["dinner"] or 0))
+        edit_lunch = st.number_input(
+            "Edit Lunch", min_value=0, value=int(record["lunch"] or 0)
+        )
+        edit_dinner = st.number_input(
+            "Edit Dinner", min_value=0, value=int(record["dinner"] or 0)
+        )
     with ec2:
-        edit_price = st.number_input("Edit Price", min_value=0.0, value=float(record["meal_price"]))
+        edit_price = st.number_input(
+            "Edit Price", min_value=0.0, value=float(record["meal_price"])
+        )
 
     edit_total = edit_lunch + edit_dinner
     edit_amount = edit_total * edit_price
@@ -202,13 +210,15 @@ if not df.empty:
         if st.button("✅ Update"):
             meals_col.update_one(
                 {"_id": ObjectId(record_id)},
-                {"$set": {
-                    "lunch": edit_lunch,
-                    "dinner": edit_dinner,
-                    "total_meals": edit_total,
-                    "meal_price": edit_price,
-                    "total_amount": edit_amount
-                }}
+                {
+                    "$set": {
+                        "lunch": edit_lunch,
+                        "dinner": edit_dinner,
+                        "total_meals": edit_total,
+                        "meal_price": edit_price,
+                        "total_amount": edit_amount,
+                    }
+                },
             )
 
             logger.info(f"Meal updated | id={record_id}")
@@ -236,8 +246,7 @@ if not df.empty:
 
     with col_y:
         selected_year = st.selectbox(
-            "Select Year",
-            sorted(df["year"].unique(), reverse=True)
+            "Select Year", sorted(df["year"].unique(), reverse=True)
         )
 
     months_for_year = (
@@ -252,8 +261,7 @@ if not df.empty:
     else:
         with col_m:
             selected_month = st.selectbox(
-                "Select Month",
-                months_for_year["month_name"].tolist()
+                "Select Month", months_for_year["month_name"].tolist()
             )
 
         selected_month_num = months_for_year[
@@ -261,8 +269,7 @@ if not df.empty:
         ]["month_num"].iloc[0]
 
         monthly_df = df[
-            (df["year"] == selected_year) &
-            (df["month_num"] == selected_month_num)
+            (df["year"] == selected_year) & (df["month_num"] == selected_month_num)
         ]
 
         logger.info(
@@ -274,13 +281,9 @@ if not df.empty:
         else:
             # Monthly totals
             c1, c2 = st.columns(2)
-            c1.metric(
-                "🍽️ Total Meals (Month)",
-                int(monthly_df["total_meals"].sum())
-            )
+            c1.metric("🍽️ Total Meals (Month)", int(monthly_df["total_meals"].sum()))
             c2.metric(
-                "💰 Total Amount (Month)",
-                f"₹{float(monthly_df['total_amount'].sum())}"
+                "💰 Total Amount (Month)", f"₹{float(monthly_df['total_amount'].sum())}"
             )
 
             st.dataframe(monthly_df, width="stretch")
@@ -301,7 +304,7 @@ if not df.empty and not monthly_df.empty:
     st.download_button(
         "⬇️ Download Monthly CSV",
         monthly_df.to_csv(index=False).encode("utf-8"),
-        file_name=f"{person_name}_{selected_year}_{selected_month}.csv"
+        file_name=f"{person_name}_{selected_year}_{selected_month}.csv",
     )
 
     buffer = BytesIO()
@@ -311,7 +314,7 @@ if not df.empty and not monthly_df.empty:
     st.download_button(
         "⬇️ Download Monthly Excel",
         buffer.getvalue(),
-        file_name=f"{person_name}_{selected_year}_{selected_month}.xlsx"
+        file_name=f"{person_name}_{selected_year}_{selected_month}.xlsx",
     )
 
 # ======================================================
@@ -335,10 +338,7 @@ if not df.empty:
 
     monthly = (
         df.groupby("month")
-        .agg(
-            total_meals=("total_meals", "sum"),
-            total_amount=("total_amount", "sum")
-        )
+        .agg(total_meals=("total_meals", "sum"), total_amount=("total_amount", "sum"))
         .reset_index()
         .sort_values("month")
     )
@@ -352,7 +352,7 @@ if not df.empty:
     st.download_button(
         "⬇️ Download Monthly Summary CSV",
         monthly.to_csv(index=False).encode("utf-8"),
-        file_name=f"{person_name}_monthly_summary.csv"
+        file_name=f"{person_name}_monthly_summary.csv",
     )
 
     buffer = BytesIO()
@@ -362,7 +362,7 @@ if not df.empty:
     st.download_button(
         "⬇️ Download Monthly Summary Excel",
         buffer.getvalue(),
-        file_name=f"{person_name}_monthly_summary.xlsx"
+        file_name=f"{person_name}_monthly_summary.xlsx",
     )
 
 # ======================================================
@@ -377,12 +377,14 @@ with st.form("feedback_form"):
 
     if st.form_submit_button("📨 Submit"):
         if msg.strip():
-            feedback_col.insert_one({
-                "person_name": person_name,
-                "message": msg.strip(),
-                "rating": rating,
-                "created_at": datetime.utcnow()
-            })
+            feedback_col.insert_one(
+                {
+                    "person_name": person_name,
+                    "message": msg.strip(),
+                    "rating": rating,
+                    "created_at": datetime.utcnow(),
+                }
+            )
 
             logger.info(f"Feedback submitted | rating={rating}")
             st.success("Thanks for the feedback 🙌")
