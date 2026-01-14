@@ -163,4 +163,3 @@ See `CODE_OF_CONDUCT.md` for details.
 
 Thank you for contributing to **Meal Tracker** 🚀
 Your help makes the project better for everyone.
-```
