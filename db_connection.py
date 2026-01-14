@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-from bson.objectid import ObjectId
 import streamlit as st
 
 MONGO_URI = st.secrets["MONGO_URI"]  # or os.getenv("MONGO_URI")
