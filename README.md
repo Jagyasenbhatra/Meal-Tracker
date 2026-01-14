@@ -30,6 +30,21 @@ The app uses **MongoDB** for storage and a centralized logging system for tracki
 
 ---
 
+## 📸 Screenshots
+
+### 🏠 Home Page
+![Home Page](screenshots/home_page.png)
+
+### 🍽 Meal Entry Form
+![Meal Entry Form](screenshots/meal_entry_form.png)
+
+### 📊 Meal Summary & Reports
+![Meal Summary](screenshots/meal_summary.png)
+
+### 📝 User Feedback
+![User Feedback](screenshots/user_feedback.png)
+
+
 ## 🛠️ Tech Stack
 
 * **Python 3.9+**
