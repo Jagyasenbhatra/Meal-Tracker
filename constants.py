@@ -11,4 +11,5 @@ SESSION_DEFAULTS = {
     "manual_total": 0,
     "meal_price": 0.0,
     "group_name": "",
+    "group_name_owner": "",
 }

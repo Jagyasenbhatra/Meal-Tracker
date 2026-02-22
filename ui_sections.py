@@ -10,6 +10,7 @@ from constants import PAGE_SIZE, SESSION_DEFAULTS
 from data_services import (
     clear_cached_queries,
     load_feedback_records,
+    load_last_group_for_person,
     load_groups,
     load_monthly_menus,
 )
@@ -33,10 +34,17 @@ def reset_form(logger):
 def render_name_input(logger):
     person_name = st.text_input("👤 Person Name", key="person_name").strip()
 
-    groups = load_groups()
-    group_options = ["(Individual)"] + [g["group_name"] for g in groups]
-    selected_group = st.selectbox("👥 Select Group", group_options, index=0)
-    group_name = "" if selected_group == "(Individual)" else selected_group
+    if person_name and st.session_state.get("group_name_owner") != person_name:
+        suggested_group = load_last_group_for_person(person_name)
+        st.session_state["group_name"] = suggested_group
+        st.session_state["group_name_owner"] = person_name
+
+    group_name = st.text_input(
+        "👥 Group Name (optional)",
+        key="group_name",
+        placeholder="Enter group name manually (e.g. demo)",
+        help="Group list is hidden from regular users. If you know the group name, type it.",
+    ).strip()
 
     if not person_name:
         st.warning("Please enter a name to continue.")
@@ -46,11 +54,9 @@ def render_name_input(logger):
     return person_name, group_name
 
 
-
-
 def render_group_management_section(logger):
     st.divider()
-    st.subheader("👥 Group Management")
+    st.subheader("👥 Group Management (Admin Only)")
 
     groups = load_groups()
 
@@ -647,6 +653,8 @@ def render_feedback_and_admin_panel(person_name, admin_password, logger):
                 logger.warning("Admin login failed")
                 st.error("Incorrect password")
         return
+
+    render_group_management_section(logger)
 
     fb_records = load_feedback_records()
     fb_df = pd.DataFrame(fb_records)

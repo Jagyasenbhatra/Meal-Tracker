@@ -4,7 +4,6 @@ from data_services import load_all_records, load_person_records, prepare_records
 from logger import get_logger
 from ui_sections import (
     initialize_session_state,
-    render_group_management_section,
     render_chart_and_monthly_summary,
     render_current_entry_summary,
     render_edit_delete,
@@ -28,7 +27,6 @@ st.title("🍽️ Daily Meal Tracker")
 logger.info("Application started")
 
 initialize_session_state()
-render_group_management_section(logger)
 person_name, group_name = render_name_input(logger)
 meal_data = render_meal_input()
 render_save_and_reset(person_name, group_name, meal_data, logger)

@@ -46,6 +46,20 @@ def load_all_records():
     )
 
 
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def load_last_group_for_person(person: str):
+    record = meals_col.find_one(
+        {"person_name": person, "group_name": {"$nin": [None, ""]}},
+        {"group_name": 1},
+        sort=[("meal_date", -1)],
+    )
+    if not record:
+        return ""
+    return str(record.get("group_name") or "").strip()
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def load_feedback_records():
     return list(
@@ -87,6 +101,7 @@ def load_monthly_menus():
 def clear_cached_queries():
     load_person_records.clear()
     load_all_records.clear()
+    load_last_group_for_person.clear()
     load_feedback_records.clear()
     load_groups.clear()
     load_monthly_menus.clear()
