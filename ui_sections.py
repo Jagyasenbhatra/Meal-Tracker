@@ -7,7 +7,11 @@ import streamlit as st
 from bson.objectid import ObjectId
 
 from constants import PAGE_SIZE, SESSION_DEFAULTS
-from data_services import clear_cached_queries, load_feedback_records, load_monthly_menus
+from data_services import (
+    clear_cached_queries,
+    load_feedback_records,
+    load_monthly_menus,
+)
 from db_connection import feedback_col, meals_col, menu_col
 
 
@@ -27,13 +31,18 @@ def reset_form(logger):
 
 def render_name_input(logger):
     person_name = st.text_input("👤 Person Name", key="person_name").strip()
+    group_name = st.text_input(
+        "👥 Group Name (optional)",
+        key="group_name",
+        placeholder="e.g. demo",
+    ).strip()
 
     if not person_name:
         st.warning("Please enter a name to continue.")
         st.stop()
 
-    logger.info(f"User active | person={person_name}")
-    return person_name
+    logger.info(f"User active | person={person_name} | group={group_name or 'individual'}")
+    return person_name, group_name
 
 
 def render_meal_input():
@@ -71,7 +80,7 @@ def render_meal_input():
     }
 
 
-def render_save_and_reset(person_name, meal_data, logger):
+def render_save_and_reset(person_name, group_name, meal_data, logger):
     c1, c2 = st.columns(2)
 
     with c1:
@@ -79,6 +88,7 @@ def render_save_and_reset(person_name, meal_data, logger):
             meals_col.insert_one(
                 {
                     "person_name": person_name,
+                    "group_name": group_name or None,
                     "meal_date": meal_data["meal_date"].isoformat(),
                     "mode": meal_data["mode"],
                     "lunch": meal_data["lunch"] if meal_data["mode"].startswith("Auto") else None,
@@ -91,7 +101,7 @@ def render_save_and_reset(person_name, meal_data, logger):
             )
 
             logger.info(
-                f"Meal saved | person={person_name} | date={meal_data['meal_date']} "
+                f"Meal saved | person={person_name} | group={group_name or 'individual'} | date={meal_data['meal_date']} "
                 f"| meals={meal_data['total_meals']} | amount={meal_data['total_amount']}"
             )
 
@@ -391,6 +401,72 @@ def render_monthly_section(person_name, df, logger):
             file_name=f"{person_name}_{selected_year}_{selected_month}.xlsx",
         )
 
+
+
+
+def render_group_payment_summary(all_records_df, logger):
+    st.divider()
+    st.subheader("👥 Group & Individual Payment Summary")
+
+    if all_records_df.empty:
+        st.info("No records available for group/individual summary.")
+        return
+
+    work_df = all_records_df.copy()
+    work_df["meal_date"] = pd.to_datetime(work_df["meal_date"])
+    work_df["year"] = work_df["meal_date"].dt.year
+    work_df["month_num"] = work_df["meal_date"].dt.month
+    work_df["month_name"] = work_df["meal_date"].dt.strftime("%B")
+
+    default_year, default_month_num = _get_default_year_month(work_df)
+
+    col_y, col_m = st.columns(2)
+    years = sorted(work_df["year"].unique(), reverse=True)
+
+    with col_y:
+        selected_year = st.selectbox(
+            "Payment Year",
+            years,
+            index=years.index(default_year),
+        )
+
+    months_for_year = (
+        work_df[work_df["year"] == selected_year][["month_num", "month_name"]]
+        .drop_duplicates()
+        .sort_values("month_num")
+    )
+
+    month_labels = months_for_year["month_name"].tolist()
+    month_nums = months_for_year["month_num"].tolist()
+    month_index = month_nums.index(default_month_num) if selected_year == default_year and default_month_num in month_nums else len(month_labels) - 1
+
+    with col_m:
+        selected_month = st.selectbox("Payment Month", month_labels, index=month_index)
+
+    selected_month_num = months_for_year[months_for_year["month_name"] == selected_month]["month_num"].iloc[0]
+
+    monthly_scope = work_df[(work_df["year"] == selected_year) & (work_df["month_num"] == selected_month_num)].copy()
+    if monthly_scope.empty:
+        st.info("No monthly payment data found.")
+        return
+
+    monthly_scope["pay_bucket"] = monthly_scope["group_name"].fillna("").str.strip()
+    monthly_scope["pay_bucket"] = monthly_scope.apply(
+        lambda row: row["pay_bucket"] if row["pay_bucket"] else f"Individual - {row['person_name']}",
+        axis=1,
+    )
+
+    payment_summary = (
+        monthly_scope.groupby("pay_bucket")
+        .agg(total_meals=("total_meals", "sum"), total_amount=("total_amount", "sum"), members=("person_name", lambda x: ", ".join(sorted(set(x)))))
+        .reset_index()
+        .rename(columns={"pay_bucket": "payment_target"})
+        .sort_values("payment_target")
+    )
+
+    st.caption(f"Combined payment view for {selected_month} {selected_year}. Groups are merged; users without a group remain individual.")
+    st.dataframe(payment_summary, width="stretch")
+    logger.info(f"Rendered group payment summary | month={selected_month} {selected_year} | rows={len(payment_summary)}")
 
 def render_chart_and_monthly_summary(person_name, df, logger):
     st.divider()

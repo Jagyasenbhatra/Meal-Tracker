@@ -11,6 +11,28 @@ def load_person_records(person: str):
             {"person_name": person},
             {
                 "person_name": 1,
+                "group_name": 1,
+                "meal_date": 1,
+                "mode": 1,
+                "lunch": 1,
+                "dinner": 1,
+                "total_meals": 1,
+                "meal_price": 1,
+                "total_amount": 1,
+                "created_at": 1,
+            },
+        ).sort("meal_date", 1)
+    )
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def load_all_records():
+    return list(
+        meals_col.find(
+            {},
+            {
+                "person_name": 1,
+                "group_name": 1,
                 "meal_date": 1,
                 "mode": 1,
                 "lunch": 1,
@@ -53,6 +75,7 @@ def load_monthly_menus():
 
 def clear_cached_queries():
     load_person_records.clear()
+    load_all_records.clear()
     load_feedback_records.clear()
     load_monthly_menus.clear()
 

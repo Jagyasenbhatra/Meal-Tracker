@@ -21,6 +21,10 @@ def get_database():
         [("person_name", ASCENDING), ("meal_date", DESCENDING)],
         name="idx_meals_person_date",
     )
+    database["meals"].create_index(
+        [("group_name", ASCENDING), ("meal_date", DESCENDING)],
+        name="idx_meals_group_date",
+    )
     database["feedback"].create_index(
         [("created_at", DESCENDING)],
         name="idx_feedback_created_at",
