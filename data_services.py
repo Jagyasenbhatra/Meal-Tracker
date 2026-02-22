@@ -25,6 +25,39 @@ def load_person_records(person: str):
     )
 
 
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def load_context_records(person: str, group_name: str):
+    filters = {"person_name": person}
+
+    normalized_group = (group_name or "").strip()
+    if normalized_group:
+        filters = {
+            "$or": [
+                {"person_name": person},
+                {"group_name": normalized_group},
+            ]
+        }
+
+    return list(
+        meals_col.find(
+            filters,
+            {
+                "person_name": 1,
+                "group_name": 1,
+                "meal_date": 1,
+                "mode": 1,
+                "lunch": 1,
+                "dinner": 1,
+                "total_meals": 1,
+                "meal_price": 1,
+                "total_amount": 1,
+                "created_at": 1,
+            },
+        ).sort("meal_date", 1)
+    )
+
 @st.cache_data(ttl=30, show_spinner=False)
 def load_all_records():
     return list(
@@ -100,6 +133,7 @@ def load_monthly_menus():
 
 def clear_cached_queries():
     load_person_records.clear()
+    load_context_records.clear()
     load_all_records.clear()
     load_last_group_for_person.clear()
     load_feedback_records.clear()
