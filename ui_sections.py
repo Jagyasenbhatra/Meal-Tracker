@@ -7,8 +7,8 @@ import streamlit as st
 from bson.objectid import ObjectId
 
 from constants import PAGE_SIZE, SESSION_DEFAULTS
-from data_services import clear_cached_queries, load_feedback_records
-from db_connection import feedback_col, meals_col
+from data_services import clear_cached_queries, load_feedback_records, load_monthly_menus
+from db_connection import feedback_col, meals_col, menu_col
 
 
 def initialize_session_state():
@@ -110,6 +110,82 @@ def render_current_entry_summary(meal_data, logger):
     st.write(f"**Total Meals:** {meal_data['total_meals']}")
     st.write(f"### 💰 Total Amount: ₹{meal_data['total_amount']}")
     logger.info("Displayed current entry summary")
+
+
+def render_monthly_menu_section(person_name, logger):
+    st.divider()
+    st.subheader("📖 Monthly Menu")
+
+    menu_records = load_monthly_menus()
+    menu_by_key = {record["month_key"]: record for record in menu_records}
+
+    current_key = datetime.utcnow().strftime("%Y-%m")
+    current_label = datetime.utcnow().strftime("%B %Y")
+
+    current_menu = menu_by_key.get(current_key)
+    if current_menu:
+        st.markdown(f"**Current Month Menu ({current_label})**")
+        st.image(
+            current_menu["image_bytes"],
+            caption=f"Updated: {current_menu.get('updated_at')} | by {current_menu.get('updated_by', 'N/A')}",
+            use_container_width=True,
+        )
+    else:
+        st.info("No menu uploaded for the current month yet.")
+
+    if menu_records:
+        labels = [record["month_label"] for record in menu_records]
+        key_for_label = {record["month_label"]: record["month_key"] for record in menu_records}
+        default_index = 0
+        if current_menu:
+            default_index = labels.index(menu_by_key[current_key]["month_label"])
+
+        selected_label = st.selectbox("Browse menu by month", labels, index=default_index)
+        selected_menu = menu_by_key[key_for_label[selected_label]]
+        st.image(
+            selected_menu["image_bytes"],
+            caption=f"{selected_menu['month_label']} menu",
+            use_container_width=True,
+        )
+
+    st.markdown("### Upload / Update Monthly Menu")
+    selected_month = st.date_input(
+        "Select month for menu",
+        value=datetime.utcnow().date(),
+        key="menu_month",
+    )
+    uploaded_menu = st.file_uploader(
+        "Upload menu image (PNG/JPG)",
+        type=["png", "jpg", "jpeg"],
+        key="menu_uploader",
+    )
+
+    if st.button("💾 Save Monthly Menu"):
+        if not uploaded_menu:
+            st.warning("Please upload an image before saving.")
+            return
+
+        month_key = selected_month.strftime("%Y-%m")
+        month_label = selected_month.strftime("%B %Y")
+        menu_col.update_one(
+            {"month_key": month_key},
+            {
+                "$set": {
+                    "month_key": month_key,
+                    "month_label": month_label,
+                    "image_bytes": uploaded_menu.getvalue(),
+                    "image_type": uploaded_menu.type,
+                    "updated_at": datetime.utcnow(),
+                    "updated_by": person_name,
+                }
+            },
+            upsert=True,
+        )
+
+        clear_cached_queries()
+        logger.info(f"Monthly menu updated | month={month_key} | by={person_name}")
+        st.success(f"Menu saved for {month_label}")
+        st.rerun()
 
 
 def render_saved_records(person_name, df, logger):
@@ -215,6 +291,22 @@ def render_edit_delete(df, logger):
             st.rerun()
 
 
+def _get_default_year_month(df):
+    current_year = datetime.utcnow().year
+    current_month = datetime.utcnow().month
+
+    years = sorted(df["year"].unique(), reverse=True)
+    if current_year in years:
+        year_choice = current_year
+        months = df[df["year"] == year_choice]["month_num"].unique().tolist()
+        month_choice = current_month if current_month in months else max(months)
+    else:
+        year_choice = years[0]
+        month_choice = max(df[df["year"] == year_choice]["month_num"].unique().tolist())
+
+    return year_choice, month_choice
+
+
 def render_monthly_section(person_name, df, logger):
     st.divider()
     st.subheader("📆 Filter Records by Month")
@@ -228,10 +320,13 @@ def render_monthly_section(person_name, df, logger):
         df["month_num"] = df["meal_date"].dt.month
         df["month_name"] = df["meal_date"].dt.strftime("%B")
 
+        default_year, default_month_num = _get_default_year_month(df)
+
         col_y, col_m = st.columns(2)
 
+        years = sorted(df["year"].unique(), reverse=True)
         with col_y:
-            selected_year = st.selectbox("Select Year", sorted(df["year"].unique(), reverse=True))
+            selected_year = st.selectbox("Select Year", years, index=years.index(default_year))
 
         months_for_year = (
             df[df["year"] == selected_year][["month_num", "month_name"]]
@@ -243,8 +338,16 @@ def render_monthly_section(person_name, df, logger):
             logger.warning(f"No months found for year {selected_year}")
             st.info("No records found for the selected year.")
         else:
+            month_labels = months_for_year["month_name"].tolist()
+            month_nums = months_for_year["month_num"].tolist()
+            month_index = 0
+            if selected_year == default_year and default_month_num in month_nums:
+                month_index = month_nums.index(default_month_num)
+            else:
+                month_index = len(month_labels) - 1
+
             with col_m:
-                selected_month = st.selectbox("Select Month", months_for_year["month_name"].tolist())
+                selected_month = st.selectbox("Select Month", month_labels, index=month_index)
 
             selected_month_num = months_for_year[
                 months_for_year["month_name"] == selected_month

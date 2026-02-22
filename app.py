@@ -10,6 +10,7 @@ from ui_sections import (
     render_export_data,
     render_feedback_and_admin_panel,
     render_meal_input,
+    render_monthly_menu_section,
     render_monthly_section,
     render_name_input,
     render_save_and_reset,
@@ -29,6 +30,7 @@ person_name = render_name_input(logger)
 meal_data = render_meal_input()
 render_save_and_reset(person_name, meal_data, logger)
 render_current_entry_summary(meal_data, logger)
+render_monthly_menu_section(person_name, logger)
 
 records = load_person_records(person_name)
 logger.info(f"Fetched records | count={len(records)}")

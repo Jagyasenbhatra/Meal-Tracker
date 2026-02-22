@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from db_connection import feedback_col, meals_col
+from db_connection import feedback_col, meals_col, menu_col
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -34,9 +34,27 @@ def load_feedback_records():
     )
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def load_monthly_menus():
+    return list(
+        menu_col.find(
+            {},
+            {
+                "month_key": 1,
+                "month_label": 1,
+                "image_bytes": 1,
+                "image_type": 1,
+                "updated_at": 1,
+                "updated_by": 1,
+            },
+        ).sort("month_key", -1)
+    )
+
+
 def clear_cached_queries():
     load_person_records.clear()
     load_feedback_records.clear()
+    load_monthly_menus.clear()
 
 
 def prepare_records_dataframe(records):
