@@ -33,7 +33,7 @@ def render_name_input(logger):
     raw_person_name = st.text_input(
         "👤 Person Name",
         key="person_name",
-        help="Use suffix for group: name_group (example: jagya_demo).",
+        help="Use suffix for group: name-group (example: jagya-demo).",
     ).strip()
 
     if not raw_person_name:
@@ -42,8 +42,8 @@ def render_name_input(logger):
 
     person_name = raw_person_name
     group_name = ""
-    if "_" in raw_person_name:
-        base_name, suffix_group = raw_person_name.rsplit("_", 1)
+    if "-" in raw_person_name:
+        base_name, suffix_group = raw_person_name.rsplit("-", 1)
         if base_name.strip() and suffix_group.strip():
             person_name = base_name.strip()
             group_name = suffix_group.strip()
