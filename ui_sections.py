@@ -253,11 +253,16 @@ def render_monthly_menu_section(person_name, logger):
 
         selected_label = st.selectbox("Browse menu by month", labels, index=default_index)
         selected_menu = menu_by_key[key_for_label[selected_label]]
-        st.image(
-            selected_menu["image_bytes"],
-            caption=f"{selected_menu['month_label']} menu",
-            use_container_width=True,
-        )
+
+        if st.button("🖼️ Display Selected Month Menu"):
+            st.session_state["show_selected_month_menu"] = selected_label
+
+        if st.session_state.get("show_selected_month_menu") == selected_label:
+            st.image(
+                selected_menu["image_bytes"],
+                caption=f"{selected_menu['month_label']} menu",
+                use_container_width=True,
+            )
 
     st.markdown("### Upload / Update Monthly Menu")
     selected_month = st.date_input(
