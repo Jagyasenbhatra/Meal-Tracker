@@ -29,11 +29,6 @@ def get_database():
         [("created_at", DESCENDING)],
         name="idx_feedback_created_at",
     )
-    database["groups"].create_index(
-        [("group_name", ASCENDING)],
-        name="idx_groups_group_name",
-        unique=True,
-    )
     database["menus"].create_index(
         [("month_key", ASCENDING)],
         name="idx_menus_month_key",
@@ -47,4 +42,3 @@ db = get_database()
 meals_col = db["meals"]
 feedback_col = db["feedback"]
 menu_col = db["menus"]
-groups_col = db["groups"]

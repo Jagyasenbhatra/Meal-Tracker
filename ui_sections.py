@@ -10,11 +10,9 @@ from constants import PAGE_SIZE, SESSION_DEFAULTS
 from data_services import (
     clear_cached_queries,
     load_feedback_records,
-    load_last_group_for_person,
-    load_groups,
     load_monthly_menus,
 )
-from db_connection import feedback_col, groups_col, meals_col, menu_col
+from db_connection import feedback_col, meals_col, menu_col
 
 
 def initialize_session_state():
@@ -32,118 +30,28 @@ def reset_form(logger):
 
 
 def render_name_input(logger):
-    person_name = st.text_input("👤 Person Name", key="person_name").strip()
-
-    if person_name and st.session_state.get("group_name_owner") != person_name:
-        suggested_group = load_last_group_for_person(person_name)
-        st.session_state["group_name"] = suggested_group
-        st.session_state["group_name_owner"] = person_name
-
-    group_name = st.text_input(
-        "👥 Group Name (optional)",
-        key="group_name",
-        placeholder="Enter group name manually (e.g. demo)",
-        help="Group list is hidden from regular users. If you know the group name, type it.",
+    raw_person_name = st.text_input(
+        "👤 Person Name",
+        key="person_name",
+        help="Use suffix for group: name_group (example: jagya_demo).",
     ).strip()
 
-    if not person_name:
+    if not raw_person_name:
         st.warning("Please enter a name to continue.")
         st.stop()
 
-    logger.info(f"User active | person={person_name} | group={group_name or 'individual'}")
+    person_name = raw_person_name
+    group_name = ""
+    if "_" in raw_person_name:
+        base_name, suffix_group = raw_person_name.rsplit("_", 1)
+        if base_name.strip() and suffix_group.strip():
+            person_name = base_name.strip()
+            group_name = suffix_group.strip()
+
+    logger.info(
+        f"User active | raw={raw_person_name} | person={person_name} | group={group_name or 'individual'}"
+    )
     return person_name, group_name
-
-
-def render_group_management_section(logger):
-    st.divider()
-    st.subheader("👥 Group Management (Admin Only)")
-
-    groups = load_groups()
-
-    with st.expander("Create / Update / Delete Groups", expanded=False):
-        st.markdown("Use this section to manage reusable groups for meal entries.")
-
-        new_group_name = st.text_input("New Group Name", key="new_group_name").strip()
-        new_group_desc = st.text_input("Description (optional)", key="new_group_desc").strip()
-
-        if st.button("➕ Create Group"):
-            if not new_group_name:
-                st.warning("Group name is required.")
-            else:
-                groups_col.update_one(
-                    {"group_name": new_group_name},
-                    {
-                        "$setOnInsert": {"created_at": datetime.utcnow()},
-                        "$set": {
-                            "group_name": new_group_name,
-                            "description": new_group_desc or None,
-                            "updated_at": datetime.utcnow(),
-                        },
-                    },
-                    upsert=True,
-                )
-                clear_cached_queries()
-                logger.info(f"Group created/updated | group={new_group_name}")
-                st.success(f"Group saved: {new_group_name}")
-                st.rerun()
-
-        if groups:
-            group_names = [g["group_name"] for g in groups]
-            selected_group = st.selectbox("Existing Group", group_names, key="existing_group")
-            selected_doc = next(g for g in groups if g["group_name"] == selected_group)
-
-            updated_name = st.text_input(
-                "Update Group Name",
-                value=selected_group,
-                key="updated_group_name",
-            ).strip()
-            updated_desc = st.text_input(
-                "Update Description",
-                value=selected_doc.get("description") or "",
-                key="updated_group_desc",
-            ).strip()
-
-            col_u, col_d = st.columns(2)
-            with col_u:
-                if st.button("✅ Update Group"):
-                    if not updated_name:
-                        st.warning("Updated group name cannot be empty.")
-                    else:
-                        groups_col.delete_one({"group_name": selected_group})
-                        groups_col.update_one(
-                            {"group_name": updated_name},
-                            {
-                                "$setOnInsert": {"created_at": selected_doc.get("created_at", datetime.utcnow())},
-                                "$set": {
-                                    "group_name": updated_name,
-                                    "description": updated_desc or None,
-                                    "updated_at": datetime.utcnow(),
-                                },
-                            },
-                            upsert=True,
-                        )
-                        meals_col.update_many(
-                            {"group_name": selected_group},
-                            {"$set": {"group_name": updated_name}},
-                        )
-                        clear_cached_queries()
-                        logger.info(f"Group updated | old={selected_group} | new={updated_name}")
-                        st.success("Group updated")
-                        st.rerun()
-
-            with col_d:
-                if st.button("🗑 Delete Group"):
-                    groups_col.delete_one({"group_name": selected_group})
-                    meals_col.update_many(
-                        {"group_name": selected_group},
-                        {"$set": {"group_name": None}},
-                    )
-                    clear_cached_queries()
-                    logger.warning(f"Group deleted | group={selected_group}")
-                    st.success("Group deleted. Linked meals moved to Individual.")
-                    st.rerun()
-        else:
-            st.info("No groups yet. Create your first group.")
 
 
 def render_meal_input():
@@ -658,8 +566,6 @@ def render_feedback_and_admin_panel(person_name, admin_password, logger):
                 logger.warning("Admin login failed")
                 st.error("Incorrect password")
         return
-
-    render_group_management_section(logger)
 
     fb_records = load_feedback_records()
     fb_df = pd.DataFrame(fb_records)

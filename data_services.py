@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from db_connection import feedback_col, groups_col, meals_col, menu_col
+from db_connection import feedback_col, meals_col, menu_col
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -82,18 +82,6 @@ def load_all_records():
 
 
 @st.cache_data(ttl=30, show_spinner=False)
-def load_last_group_for_person(person: str):
-    record = meals_col.find_one(
-        {"person_name": person, "group_name": {"$nin": [None, ""]}},
-        {"group_name": 1},
-        sort=[("meal_date", -1)],
-    )
-    if not record:
-        return ""
-    return str(record.get("group_name") or "").strip()
-
-
-@st.cache_data(ttl=30, show_spinner=False)
 def load_feedback_records():
     return list(
         feedback_col.find(
@@ -104,15 +92,6 @@ def load_feedback_records():
 
 
 
-
-@st.cache_data(ttl=30, show_spinner=False)
-def load_groups():
-    return list(
-        groups_col.find(
-            {},
-            {"group_name": 1, "description": 1, "created_at": 1, "updated_at": 1},
-        ).sort("group_name", 1)
-    )
 
 @st.cache_data(ttl=30, show_spinner=False)
 def load_monthly_menus():
@@ -135,9 +114,7 @@ def clear_cached_queries():
     load_person_records.clear()
     load_context_records.clear()
     load_all_records.clear()
-    load_last_group_for_person.clear()
     load_feedback_records.clear()
-    load_groups.clear()
     load_monthly_menus.clear()
 
 
