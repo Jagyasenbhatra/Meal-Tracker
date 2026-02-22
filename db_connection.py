@@ -30,8 +30,8 @@ def get_database():
         name="idx_feedback_created_at",
     )
     database["menus"].create_index(
-        [("month_key", ASCENDING)],
-        name="idx_menus_month_key",
+        [("menu_scope", ASCENDING), ("scope_value", ASCENDING), ("month_key", ASCENDING)],
+        name="idx_menus_scope_month_key",
         unique=True,
     )
 

@@ -31,7 +31,7 @@ person_name, group_name = render_name_input(logger)
 meal_data = render_meal_input()
 render_save_and_reset(person_name, group_name, meal_data, logger)
 render_current_entry_summary(meal_data, logger)
-render_monthly_menu_section(person_name, logger)
+render_monthly_menu_section(person_name, group_name, logger)
 
 own_records = load_person_records(person_name)
 visible_records = load_context_records(person_name, group_name)

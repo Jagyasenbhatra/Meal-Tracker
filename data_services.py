@@ -94,13 +94,22 @@ def load_feedback_records():
 
 
 @st.cache_data(ttl=30, show_spinner=False)
-def load_monthly_menus():
+def load_monthly_menus(person_name: str, group_name: str):
+    normalized_group = (group_name or "").strip()
+    scopes = [
+        {"menu_scope": "person", "scope_value": person_name},
+    ]
+    if normalized_group:
+        scopes.append({"menu_scope": "group", "scope_value": normalized_group})
+
     return list(
         menu_col.find(
-            {},
+            {"$or": scopes},
             {
                 "month_key": 1,
                 "month_label": 1,
+                "menu_scope": 1,
+                "scope_value": 1,
                 "image_bytes": 1,
                 "image_type": 1,
                 "updated_at": 1,
