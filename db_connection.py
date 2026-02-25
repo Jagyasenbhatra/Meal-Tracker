@@ -6,6 +6,7 @@ import streamlit as st
 def get_database():
     """Create a shared MongoDB connection for all Streamlit reruns/sessions."""
     mongo_uri = st.secrets["MONGO_URI"]
+
     client = MongoClient(
         mongo_uri,
         maxPoolSize=100,
@@ -16,21 +17,45 @@ def get_database():
 
     database = client["meal_tracker"]
 
-    # Indexes improve query speed as the data volume increases.
+    # ------------------------------
+    # Meals indexes
+    # ------------------------------
     database["meals"].create_index(
         [("person_name", ASCENDING), ("meal_date", DESCENDING)],
         name="idx_meals_person_date",
     )
+
     database["meals"].create_index(
         [("group_name", ASCENDING), ("meal_date", DESCENDING)],
         name="idx_meals_group_date",
     )
+
+    # ------------------------------
+    # Feedback indexes
+    # ------------------------------
     database["feedback"].create_index(
         [("created_at", DESCENDING)],
         name="idx_feedback_created_at",
     )
-    database["menus"].create_index(
-        [("menu_scope", ASCENDING), ("scope_value", ASCENDING), ("month_key", ASCENDING)],
+
+    # ------------------------------
+    # Menus indexes
+    # ------------------------------
+    menus = database["menus"]
+
+    # Drop old incorrect index if it exists
+    try:
+        menus.drop_index("idx_menus_month_key")
+    except Exception:
+        pass  # Ignore if it doesn't exist
+
+    # Correct compound unique index
+    menus.create_index(
+        [
+            ("menu_scope", ASCENDING),
+            ("scope_value", ASCENDING),
+            ("month_key", ASCENDING),
+        ],
         name="idx_menus_scope_month_key",
         unique=True,
     )
