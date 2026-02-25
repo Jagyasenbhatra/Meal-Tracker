@@ -71,13 +71,9 @@ def render_meal_input():
     else:
         lunch = None
         dinner = None
-        total_meals = st.number_input(
-            "Total Meals", min_value=0, step=1, key="manual_total"
-        )
+        total_meals = st.number_input("Total Meals", min_value=0, step=1, key="manual_total")
 
-    meal_price = st.number_input(
-        "Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price"
-    )
+    meal_price = st.number_input("Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price")
     total_amount = total_meals * meal_price
 
     return {
@@ -102,15 +98,9 @@ def render_save_and_reset(person_name, group_name, meal_data, logger):
                     "group_name": group_name or None,
                     "meal_date": meal_data["meal_date"].isoformat(),
                     "mode": meal_data["mode"],
-                    "lunch": (
-                        meal_data["lunch"]
-                        if meal_data["mode"].startswith("Auto")
-                        else None
-                    ),
+                    "lunch": (meal_data["lunch"] if meal_data["mode"].startswith("Auto") else None),
                     "dinner": (
-                        meal_data["dinner"]
-                        if meal_data["mode"].startswith("Auto")
-                        else None
+                        meal_data["dinner"] if meal_data["mode"].startswith("Auto") else None
                     ),
                     "total_meals": meal_data["total_meals"],
                     "meal_price": meal_data["meal_price"],
@@ -208,9 +198,7 @@ def render_monthly_menu_section(person_name, group_name, logger):
             options.append((label, record))
 
         labels = [label for label, _ in options]
-        selected_label = st.selectbox(
-            "Browse accessible menus by month", labels, index=0
-        )
+        selected_label = st.selectbox("Browse accessible menus by month", labels, index=0)
         selected_menu = dict(options)[selected_label]
 
         if st.button("🖼️ Display Selected Month Menu"):
@@ -282,24 +270,18 @@ def render_saved_records(person_name, df, logger):
 
     c1, c2 = st.columns(2)
     c1.metric("🍽️ Total Meals", int(df["total_meals"].sum()) if not df.empty else 0)
-    c2.metric(
-        "💰 Total Amount", f"₹{df['total_amount'].sum()}" if not df.empty else "₹0"
-    )
+    c2.metric("💰 Total Amount", f"₹{df['total_amount'].sum()}" if not df.empty else "₹0")
 
     if not df.empty:
         total_pages = ceil(len(df) / PAGE_SIZE)
         page_options = list(range(1, total_pages + 1))
-        selected_page = st.selectbox(
-            "Records page", page_options, index=total_pages - 1
-        )
+        selected_page = st.selectbox("Records page", page_options, index=total_pages - 1)
 
         start_idx = (selected_page - 1) * PAGE_SIZE
         end_idx = start_idx + PAGE_SIZE
         paged_df = df.iloc[start_idx:end_idx]
 
-        st.caption(
-            f"Showing records {start_idx + 1} to {min(end_idx, len(df))} of {len(df)}"
-        )
+        st.caption(f"Showing records {start_idx + 1} to {min(end_idx, len(df))} of {len(df)}")
         st.dataframe(paged_df, width="stretch")
     else:
         st.dataframe(df, width="stretch")
@@ -326,9 +308,7 @@ def render_export_data(person_name, df, logger):
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, index=False)
 
-    st.download_button(
-        "⬇️ Download Excel", buffer.getvalue(), file_name=f"{person_name}_meals.xlsx"
-    )
+    st.download_button("⬇️ Download Excel", buffer.getvalue(), file_name=f"{person_name}_meals.xlsx")
 
 
 def render_edit_delete(df, logger):
@@ -339,8 +319,7 @@ def render_edit_delete(df, logger):
         return
 
     record_map = {
-        f"{row['meal_date'].date()} ({row['_id']})": row["_id"]
-        for _, row in df.iterrows()
+        f"{row['meal_date'].date()} ({row['_id']})": row["_id"] for _, row in df.iterrows()
     }
 
     label = st.selectbox("Select Record", record_map.keys())
@@ -349,16 +328,10 @@ def render_edit_delete(df, logger):
 
     ec1, ec2 = st.columns(2)
     with ec1:
-        edit_lunch = st.number_input(
-            "Edit Lunch", min_value=0, value=int(record["lunch"] or 0)
-        )
-        edit_dinner = st.number_input(
-            "Edit Dinner", min_value=0, value=int(record["dinner"] or 0)
-        )
+        edit_lunch = st.number_input("Edit Lunch", min_value=0, value=int(record["lunch"] or 0))
+        edit_dinner = st.number_input("Edit Dinner", min_value=0, value=int(record["dinner"] or 0))
     with ec2:
-        edit_price = st.number_input(
-            "Edit Price", min_value=0.0, value=float(record["meal_price"])
-        )
+        edit_price = st.number_input("Edit Price", min_value=0.0, value=float(record["meal_price"]))
 
     edit_total = edit_lunch + edit_dinner
     edit_amount = edit_total * edit_price
@@ -428,9 +401,7 @@ def render_monthly_section(person_name, df, logger):
 
         years = sorted(df["year"].unique(), reverse=True)
         with col_y:
-            selected_year = st.selectbox(
-                "Select Year", years, index=years.index(default_year)
-            )
+            selected_year = st.selectbox("Select Year", years, index=years.index(default_year))
 
         months_for_year = (
             df[df["year"] == selected_year][["month_num", "month_name"]]
@@ -451,17 +422,13 @@ def render_monthly_section(person_name, df, logger):
                 month_index = len(month_labels) - 1
 
             with col_m:
-                selected_month = st.selectbox(
-                    "Select Month", month_labels, index=month_index
-                )
+                selected_month = st.selectbox("Select Month", month_labels, index=month_index)
 
-            selected_month_num = months_for_year[
-                months_for_year["month_name"] == selected_month
-            ]["month_num"].iloc[0]
+            selected_month_num = months_for_year[months_for_year["month_name"] == selected_month][
+                "month_num"
+            ].iloc[0]
 
-            monthly_df = df[
-                (df["year"] == selected_year) & (df["month_num"] == selected_month_num)
-            ]
+            monthly_df = df[(df["year"] == selected_year) & (df["month_num"] == selected_month_num)]
 
             logger.info(
                 f"Monthly filter applied | {selected_month} {selected_year} | rows={len(monthly_df)}"
@@ -546,13 +513,12 @@ def render_group_payment_summary(all_records_df, logger):
     with col_m:
         selected_month = st.selectbox("Payment Month", month_labels, index=month_index)
 
-    selected_month_num = months_for_year[
-        months_for_year["month_name"] == selected_month
-    ]["month_num"].iloc[0]
+    selected_month_num = months_for_year[months_for_year["month_name"] == selected_month][
+        "month_num"
+    ].iloc[0]
 
     monthly_scope = work_df[
-        (work_df["year"] == selected_year)
-        & (work_df["month_num"] == selected_month_num)
+        (work_df["year"] == selected_year) & (work_df["month_num"] == selected_month_num)
     ].copy()
     if monthly_scope.empty:
         st.info("No monthly payment data found.")
@@ -561,14 +527,10 @@ def render_group_payment_summary(all_records_df, logger):
     if "group_name" not in monthly_scope.columns:
         monthly_scope["group_name"] = ""
 
-    monthly_scope["pay_bucket"] = (
-        monthly_scope["group_name"].fillna("").astype(str).str.strip()
-    )
+    monthly_scope["pay_bucket"] = monthly_scope["group_name"].fillna("").astype(str).str.strip()
     monthly_scope["pay_bucket"] = monthly_scope.apply(
         lambda row: (
-            row["pay_bucket"]
-            if row["pay_bucket"]
-            else f"Individual - {row['person_name']}"
+            row["pay_bucket"] if row["pay_bucket"] else f"Individual - {row['person_name']}"
         ),
         axis=1,
     )
@@ -684,8 +646,7 @@ def render_feedback_and_admin_panel(person_name, admin_password, logger):
         st.dataframe(fb_df, width="stretch")
 
         fb_map = {
-            f"{row['person_name']} | {row['created_at']}": row["_id"]
-            for _, row in fb_df.iterrows()
+            f"{row['person_name']} | {row['created_at']}": row["_id"] for _, row in fb_df.iterrows()
         }
 
         fb_label = st.selectbox("Select feedback", fb_map.keys())
