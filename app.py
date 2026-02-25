@@ -1,6 +1,10 @@
 import streamlit as st
 
-from data_services import load_context_records, load_person_records, prepare_records_dataframe
+from data_services import (
+    load_context_records,
+    load_person_records,
+    prepare_records_dataframe,
+)
 from logger import get_logger
 from ui_sections import (
     initialize_session_state,

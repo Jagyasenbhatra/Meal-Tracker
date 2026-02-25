@@ -73,9 +73,7 @@ def render_meal_input():
         dinner = None
         total_meals = st.number_input("Total Meals", min_value=0, step=1, key="manual_total")
 
-    meal_price = st.number_input(
-        "Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price"
-    )
+    meal_price = st.number_input("Price per Meal (₹)", min_value=0.0, step=1.0, key="meal_price")
     total_amount = total_meals * meal_price
 
     return {
@@ -100,8 +98,10 @@ def render_save_and_reset(person_name, group_name, meal_data, logger):
                     "group_name": group_name or None,
                     "meal_date": meal_data["meal_date"].isoformat(),
                     "mode": meal_data["mode"],
-                    "lunch": meal_data["lunch"] if meal_data["mode"].startswith("Auto") else None,
-                    "dinner": meal_data["dinner"] if meal_data["mode"].startswith("Auto") else None,
+                    "lunch": (meal_data["lunch"] if meal_data["mode"].startswith("Auto") else None),
+                    "dinner": (
+                        meal_data["dinner"] if meal_data["mode"].startswith("Auto") else None
+                    ),
                     "total_meals": meal_data["total_meals"],
                     "meal_price": meal_data["meal_price"],
                     "total_amount": meal_data["total_amount"],
@@ -189,7 +189,11 @@ def render_monthly_menu_section(person_name, group_name, logger):
     if menu_records:
         options = []
         for record in menu_records:
-            scope_label = "Personal" if record.get("menu_scope") == "person" else f"Group ({record.get('scope_value')})"
+            scope_label = (
+                "Personal"
+                if record.get("menu_scope") == "person"
+                else f"Group ({record.get('scope_value')})"
+            )
             label = f"{record['month_label']} — {scope_label}"
             options.append((label, record))
 
@@ -232,7 +236,11 @@ def render_monthly_menu_section(person_name, group_name, logger):
         scope_value = normalized_group if scope_type == "group" else person_name
 
         menu_col.update_one(
-            {"menu_scope": scope_type, "scope_value": scope_value, "month_key": month_key},
+            {
+                "menu_scope": scope_type,
+                "scope_value": scope_value,
+                "month_key": month_key,
+            },
             {
                 "$set": {
                     "menu_scope": scope_type,
@@ -311,8 +319,7 @@ def render_edit_delete(df, logger):
         return
 
     record_map = {
-        f"{row['meal_date'].date()} ({row['_id']})": row["_id"]
-        for _, row in df.iterrows()
+        f"{row['meal_date'].date()} ({row['_id']})": row["_id"] for _, row in df.iterrows()
     }
 
     label = st.selectbox("Select Record", record_map.keys())
@@ -417,9 +424,9 @@ def render_monthly_section(person_name, df, logger):
             with col_m:
                 selected_month = st.selectbox("Select Month", month_labels, index=month_index)
 
-            selected_month_num = months_for_year[
-                months_for_year["month_name"] == selected_month
-            ]["month_num"].iloc[0]
+            selected_month_num = months_for_year[months_for_year["month_name"] == selected_month][
+                "month_num"
+            ].iloc[0]
 
             monthly_df = df[(df["year"] == selected_year) & (df["month_num"] == selected_month_num)]
 
@@ -432,7 +439,10 @@ def render_monthly_section(person_name, df, logger):
             else:
                 c1, c2 = st.columns(2)
                 c1.metric("🍽️ Total Meals (Month)", int(monthly_df["total_meals"].sum()))
-                c2.metric("💰 Total Amount (Month)", f"₹{float(monthly_df['total_amount'].sum())}")
+                c2.metric(
+                    "💰 Total Amount (Month)",
+                    f"₹{float(monthly_df['total_amount'].sum())}",
+                )
                 st.dataframe(monthly_df, width="stretch")
     else:
         logger.info("Monthly filter skipped — no data available")
@@ -458,8 +468,6 @@ def render_monthly_section(person_name, df, logger):
             buffer.getvalue(),
             file_name=f"{person_name}_{selected_year}_{selected_month}.xlsx",
         )
-
-
 
 
 def render_group_payment_summary(all_records_df, logger):
@@ -496,14 +504,22 @@ def render_group_payment_summary(all_records_df, logger):
 
     month_labels = months_for_year["month_name"].tolist()
     month_nums = months_for_year["month_num"].tolist()
-    month_index = month_nums.index(default_month_num) if selected_year == default_year and default_month_num in month_nums else len(month_labels) - 1
+    month_index = (
+        month_nums.index(default_month_num)
+        if selected_year == default_year and default_month_num in month_nums
+        else len(month_labels) - 1
+    )
 
     with col_m:
         selected_month = st.selectbox("Payment Month", month_labels, index=month_index)
 
-    selected_month_num = months_for_year[months_for_year["month_name"] == selected_month]["month_num"].iloc[0]
+    selected_month_num = months_for_year[months_for_year["month_name"] == selected_month][
+        "month_num"
+    ].iloc[0]
 
-    monthly_scope = work_df[(work_df["year"] == selected_year) & (work_df["month_num"] == selected_month_num)].copy()
+    monthly_scope = work_df[
+        (work_df["year"] == selected_year) & (work_df["month_num"] == selected_month_num)
+    ].copy()
     if monthly_scope.empty:
         st.info("No monthly payment data found.")
         return
@@ -513,21 +529,32 @@ def render_group_payment_summary(all_records_df, logger):
 
     monthly_scope["pay_bucket"] = monthly_scope["group_name"].fillna("").astype(str).str.strip()
     monthly_scope["pay_bucket"] = monthly_scope.apply(
-        lambda row: row["pay_bucket"] if row["pay_bucket"] else f"Individual - {row['person_name']}",
+        lambda row: (
+            row["pay_bucket"] if row["pay_bucket"] else f"Individual - {row['person_name']}"
+        ),
         axis=1,
     )
 
     payment_summary = (
         monthly_scope.groupby("pay_bucket")
-        .agg(total_meals=("total_meals", "sum"), total_amount=("total_amount", "sum"), members=("person_name", lambda x: ", ".join(sorted(set(x)))))
+        .agg(
+            total_meals=("total_meals", "sum"),
+            total_amount=("total_amount", "sum"),
+            members=("person_name", lambda x: ", ".join(sorted(set(x)))),
+        )
         .reset_index()
         .rename(columns={"pay_bucket": "payment_target"})
         .sort_values("payment_target")
     )
 
-    st.caption(f"Combined payment view for {selected_month} {selected_year}. Groups are merged; users without a group remain individual.")
+    st.caption(
+        f"Combined payment view for {selected_month} {selected_year}. Groups are merged; users without a group remain individual."
+    )
     st.dataframe(payment_summary, width="stretch")
-    logger.info(f"Rendered group payment summary | month={selected_month} {selected_year} | rows={len(payment_summary)}")
+    logger.info(
+        f"Rendered group payment summary | month={selected_month} {selected_year} | rows={len(payment_summary)}"
+    )
+
 
 def render_chart_and_monthly_summary(person_name, df, logger):
     st.divider()
@@ -619,8 +646,7 @@ def render_feedback_and_admin_panel(person_name, admin_password, logger):
         st.dataframe(fb_df, width="stretch")
 
         fb_map = {
-            f"{row['person_name']} | {row['created_at']}": row["_id"]
-            for _, row in fb_df.iterrows()
+            f"{row['person_name']} | {row['created_at']}": row["_id"] for _, row in fb_df.iterrows()
         }
 
         fb_label = st.selectbox("Select feedback", fb_map.keys())

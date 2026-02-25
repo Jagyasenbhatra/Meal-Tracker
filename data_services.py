@@ -25,8 +25,6 @@ def load_person_records(person: str):
     )
 
 
-
-
 @st.cache_data(ttl=30, show_spinner=False)
 def load_context_records(person: str, group_name: str):
     filters = {"person_name": person}
@@ -58,6 +56,7 @@ def load_context_records(person: str, group_name: str):
         ).sort("meal_date", 1)
     )
 
+
 @st.cache_data(ttl=30, show_spinner=False)
 def load_all_records():
     return list(
@@ -79,8 +78,6 @@ def load_all_records():
     )
 
 
-
-
 @st.cache_data(ttl=30, show_spinner=False)
 def load_feedback_records():
     return list(
@@ -89,8 +86,6 @@ def load_feedback_records():
             {"person_name": 1, "message": 1, "rating": 1, "created_at": 1},
         ).sort("created_at", -1)
     )
-
-
 
 
 @st.cache_data(ttl=30, show_spinner=False)
