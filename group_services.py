@@ -4,10 +4,7 @@ from datetime import datetime
 
 from db_connection import groups_col, meals_col
 from errors import (
-    QueryError,
-    GroupNotFoundError,
-    MemberAlreadyExistsError,
-    MemberNotFoundError,
+    QueryError
 )
 from validators import (
     validate_group_name,
@@ -74,7 +71,7 @@ def create_group(group_name: str, logger):
 
     except Exception as e:
         logger.error(f"Failed to create group '{group_name}': {str(e)}")
-        return False, f"Failed to create group. Please try again."
+        return False, "Failed to create group. Please try again."
 
 
 def add_member_to_group(group_name: str, member_name: str, logger):
@@ -112,7 +109,7 @@ def add_member_to_group(group_name: str, member_name: str, logger):
 
     except Exception as e:
         logger.error(f"Failed to add member to group: {str(e)}")
-        return False, f"Failed to add member. Please try again."
+        return False, "Failed to add member. Please try again."
 
 
 def remove_member_from_group(group_name: str, member_name: str, logger):

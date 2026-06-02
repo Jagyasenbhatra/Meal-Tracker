@@ -12,8 +12,6 @@ logger = get_logger()
 # Initialize app
 try:
     from data_services import (
-        load_context_records,
-        load_person_records,
         prepare_records_dataframe,
     )
     from db_connection import meals_col
@@ -21,16 +19,11 @@ try:
     from ui_sections import (
         initialize_session_state,
         render_chart_and_monthly_summary,
-        render_current_entry_summary,
-        render_edit_delete,
         render_group_payment_summary,
         render_export_data,
         render_feedback_and_admin_panel,
-        render_meal_input,
-        render_monthly_menu_section,
         render_monthly_section,
         render_name_input,
-        render_save_and_reset,
         render_saved_records,
         render_group_selection,
         render_bulk_meal_entry,
