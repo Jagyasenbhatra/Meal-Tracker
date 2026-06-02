@@ -11,8 +11,18 @@ from data_services import (
     clear_cached_queries,
     load_feedback_records,
     load_monthly_menus,
+    prepare_records_dataframe,
 )
 from db_connection import feedback_col, meals_col, menu_col
+from group_services import (
+    load_all_groups,
+    load_group_members,
+    create_group,
+    add_member_to_group,
+    remove_member_from_group,
+    get_group_dataframe,
+    clear_group_cache,
+)
 
 
 def initialize_session_state():
@@ -30,28 +40,333 @@ def reset_form(logger):
 
 
 def render_name_input(logger):
-    raw_person_name = st.text_input(
-        "👤 Person Name",
-        key="person_name",
-        help="Use suffix for group: name-group (example: jagya-demo).",
+    """Step 1: Enter Group Name
+
+    - If group exists → load it
+    - If new group → create it automatically
+    """
+    st.markdown("### 👥 Group Name")
+    group_input = st.text_input(
+        "📋 Group Name",
+        key="group_input_field",
+        placeholder="e.g., demo, office, friends",
+        help="Enter group name. New groups are created automatically.",
     ).strip()
 
-    if not raw_person_name:
-        st.warning("Please enter a name to continue.")
+    if not group_input:
+        st.warning("Please enter a group name to continue.")
         st.stop()
 
-    person_name = raw_person_name
-    group_name = ""
-    if "-" in raw_person_name:
-        base_name, suffix_group = raw_person_name.rsplit("-", 1)
-        if base_name.strip() and suffix_group.strip():
-            person_name = base_name.strip()
-            group_name = suffix_group.strip()
+    # Check and create group if needed
+    all_groups = load_all_groups()
+    if group_input not in all_groups:
+        success, message = create_group(group_input, logger)
+        if not success:
+            st.error(f"❌ {message}")
+            st.stop()
+        st.success(f"✅ {message}")
+        clear_group_cache()
+    else:
+        st.success(f"✅ Group '{group_input}' loaded!")
 
-    logger.info(
-        f"User active | raw={raw_person_name} | person={person_name} | group={group_name or 'individual'}"
-    )
-    return person_name, group_name
+    logger.info(f"Group selected: {group_input}")
+
+    # Return group name (person_name will be entered when adding members)
+    return None, group_input
+
+
+def render_group_selection(logger, group_name=None):
+    """Render group management interface for the selected group.
+
+    If group_name is provided, shows details for that group.
+    Otherwise, allows selecting/creating a group.
+    """
+    if not group_name:
+        st.markdown("### 👥 Group Management")
+        group_input = st.text_input(
+            "📋 Enter Group Name (or leave empty for individual)",
+            key="group_selection_input",
+            placeholder="e.g., demo, office, friends",
+            help="Enter an existing group name to see its data, or a new name to create it"
+        ).strip()
+
+        if not group_input:
+            st.info("No group selected. You're tracking meals individually.")
+            return None
+
+        # Check if group exists
+        all_groups = load_all_groups()
+        group_exists = group_input in all_groups
+
+        if group_exists:
+            st.success(f"✅ Group '{group_input}' found!")
+        else:
+            # Auto-create the group
+            success, message = create_group(group_input, logger)
+            if success:
+                st.success(f"✅ {message}")
+                clear_group_cache()
+            else:
+                st.error(f"❌ {message}")
+                return None
+
+        group_name = group_input
+
+    # Display group information
+    st.markdown(f"### 👥 {group_name.upper()} - Group Details")
+
+    members = load_group_members(group_name)
+
+    # Add member section
+    st.markdown("#### ➕ Add Member")
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        new_member = st.text_input(
+            "Member Name",
+            key=f"add_member_{group_name}",
+            placeholder="e.g., John"
+        ).strip()
+    with col2:
+        if st.button("Add", key=f"add_btn_{group_name}"):
+            if new_member:
+                success, msg = add_member_to_group(group_name, new_member, logger)
+                if success:
+                    st.success(msg)
+                    clear_group_cache()
+                    st.rerun()
+                else:
+                    st.error(msg)
+            else:
+                st.warning("Enter a member name")
+
+    # Display members
+    st.markdown("#### 👥 Current Members")
+    if members:
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.write(f"**Total: {len(members)} member(s)**")
+            st.write(", ".join(members))
+
+        # Remove member section
+        with col2:
+            st.markdown("##### Remove")
+            member_to_remove = st.selectbox(
+                "Select to remove",
+                members,
+                key=f"remove_{group_name}",
+                label_visibility="collapsed"
+            )
+            if st.button("🗑 Remove", key=f"remove_btn_{group_name}"):
+                success, msg = remove_member_from_group(group_name, member_to_remove, logger)
+                if success:
+                    st.warning(msg)
+                    clear_group_cache()
+                    st.rerun()
+                else:
+                    st.error(msg)
+    else:
+        st.info("No members added yet. Add the first member above!")
+
+    # Display group data if members exist
+    if members:
+        st.divider()
+        st.markdown("#### 📈 Group Statistics")
+
+        # Get meals for group members
+        group_meals = list(meals_col.find(
+            {"person_name": {"$in": members}},
+            {
+                "person_name": 1,
+                "meal_date": 1,
+                "lunch": 1,
+                "dinner": 1,
+                "total_meals": 1,
+                "meal_price": 1,
+                "total_amount": 1,
+            }
+        ).sort("meal_date", -1))
+
+        if group_meals:
+            records_df = prepare_records_dataframe(group_meals)
+
+            # Metrics
+            col1, col2, col3 = st.columns(3)
+            total_meals = records_df["total_meals"].sum()
+            total_amount = records_df["total_amount"].sum()
+
+            with col1:
+                st.metric("📊 Total Meals", int(total_meals))
+            with col2:
+                st.metric("💰 Total Amount (₹)", f"{total_amount:.2f}")
+            with col3:
+                st.metric("📝 Entries", len(records_df))
+
+            # Group summary table
+            st.markdown("**Member-wise Summary:**")
+            group_df = get_group_dataframe(group_name)
+            st.dataframe(group_df, use_container_width=True, hide_index=True)
+
+            # Member filter
+            st.markdown("**Individual Member Records:**")
+            member_filter = st.selectbox(
+                "Filter by member",
+                ["All"] + members,
+                key=f"filter_{group_name}"
+            )
+
+            if member_filter == "All":
+                display_df = records_df.copy()
+            else:
+                display_df = records_df[records_df["person_name"] == member_filter].copy()
+
+            if not display_df.empty:
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No meal data recorded for this group yet. Start adding meals!")
+
+    return group_name
+
+
+def render_bulk_meal_entry(group_name, logger):
+    """Render bulk meal entry for all group members
+
+    Shows all members with +/- buttons for lunch and dinner
+    """
+    if not group_name:
+        st.warning("No group selected")
+        return
+
+    members = load_group_members(group_name)
+
+    if not members:
+        st.warning(f"No members in group '{group_name}'. Add members in the group details section above.")
+        return
+
+    st.divider()
+    st.markdown("### 🍽️ Record Meals for All Members")
+
+    # Get meal date and price
+    col1, col2 = st.columns(2)
+    with col1:
+        meal_date = st.date_input("📅 Select Date", key="bulk_meal_date")
+    with col2:
+        meal_price = st.number_input("💰 Price per Meal (₹)", min_value=0.0, step=1.0, key="bulk_meal_price", value=0.0)
+
+    st.markdown("#### 🍴 Member Meals")
+
+    # Initialize/Update session state for member meals
+    if "member_meals" not in st.session_state:
+        st.session_state.member_meals = {}
+
+    # Ensure all current members exist in session state
+    for member in members:
+        if member not in st.session_state.member_meals:
+            st.session_state.member_meals[member] = {"lunch": 0, "dinner": 0}
+
+    # Display each member with +/- buttons - Clear Layout
+    member_data = []
+    for member in members:
+        # Member name header
+        st.markdown(f"### 👤 **{member}**")
+
+        # Lunch row
+        lunch_col1, lunch_col2, lunch_col3, lunch_col4 = st.columns([1, 0.5, 0.5, 0.5])
+        with lunch_col1:
+            st.write("🥗 **Lunch**")
+        with lunch_col2:
+            if st.button("➖", key=f"lunch_minus_{member}", help="Decrease lunch"):
+                if st.session_state.member_meals[member]["lunch"] > 0:
+                    st.session_state.member_meals[member]["lunch"] -= 1
+                st.rerun()
+        with lunch_col3:
+            lunch_val = st.session_state.member_meals[member]["lunch"]
+            st.metric("", lunch_val, label_visibility="collapsed")
+        with lunch_col4:
+            if st.button("➕", key=f"lunch_plus_{member}", help="Increase lunch"):
+                st.session_state.member_meals[member]["lunch"] += 1
+                st.rerun()
+
+        # Dinner row
+        dinner_col1, dinner_col2, dinner_col3, dinner_col4 = st.columns([1, 0.5, 0.5, 0.5])
+        with dinner_col1:
+            st.write("🍖 **Dinner**")
+        with dinner_col2:
+            if st.button("➖", key=f"dinner_minus_{member}", help="Decrease dinner"):
+                if st.session_state.member_meals[member]["dinner"] > 0:
+                    st.session_state.member_meals[member]["dinner"] -= 1
+                st.rerun()
+        with dinner_col3:
+            dinner_val = st.session_state.member_meals[member]["dinner"]
+            st.metric("", dinner_val, label_visibility="collapsed")
+        with dinner_col4:
+            if st.button("➕", key=f"dinner_plus_{member}", help="Increase dinner"):
+                st.session_state.member_meals[member]["dinner"] += 1
+                st.rerun()
+
+        st.divider()
+
+        lunch_count = st.session_state.member_meals[member]["lunch"]
+        dinner_count = st.session_state.member_meals[member]["dinner"]
+        total_meals = lunch_count + dinner_count
+        total_amount = total_meals * meal_price
+
+        member_data.append({
+            "member": member,
+            "lunch": lunch_count,
+            "dinner": dinner_count,
+            "total_meals": total_meals,
+            "total_amount": total_amount,
+        })
+
+    # Summary
+    st.markdown("#### 📊 Summary")
+    col1, col2, col3 = st.columns(3)
+
+    total_group_meals = sum(m["total_meals"] for m in member_data)
+    total_group_amount = sum(m["total_amount"] for m in member_data)
+
+    with col1:
+        st.metric("📊 Total Meals", int(total_group_meals))
+    with col2:
+        st.metric("💰 Total Amount (₹)", f"{total_group_amount:.2f}")
+    with col3:
+        st.metric("👥 Members", len(members))
+
+    # Save button
+    if st.button("💾 Save All Meals", key="save_bulk_meals"):
+        if meal_price == 0:
+            st.error("Please enter a meal price")
+            return
+
+        saved_count = 0
+        for data in member_data:
+            if data["total_meals"] > 0:
+                meals_col.insert_one({
+                    "person_name": data["member"],
+                    "group_name": group_name,
+                    "meal_date": meal_date.isoformat(),
+                    "mode": "Auto (Lunch + Dinner)",
+                    "lunch": data["lunch"],
+                    "dinner": data["dinner"],
+                    "total_meals": data["total_meals"],
+                    "meal_price": meal_price,
+                    "total_amount": data["total_amount"],
+                    "created_at": datetime.utcnow(),
+                })
+                saved_count += 1
+
+        if saved_count > 0:
+            st.success(f"✅ Saved {saved_count} member meal record(s)!")
+            logger.info(f"Bulk meal entry saved | group={group_name} | count={saved_count}")
+            clear_cached_queries()
+
+            # Reset form - reset values for all members
+            for member in members:
+                if member in st.session_state.member_meals:
+                    st.session_state.member_meals[member] = {"lunch": 0, "dinner": 0}
+            st.rerun()
+        else:
+            st.warning("No meals recorded (all members have 0 meals)")
 
 
 def render_meal_input():
@@ -282,9 +597,9 @@ def render_saved_records(person_name, df, logger):
         paged_df = df.iloc[start_idx:end_idx]
 
         st.caption(f"Showing records {start_idx + 1} to {min(end_idx, len(df))} of {len(df)}")
-        st.dataframe(paged_df, width="stretch")
+        st.dataframe(paged_df, use_container_width=True)
     else:
-        st.dataframe(df, width="stretch")
+        st.dataframe(df, use_container_width=True)
 
     logger.info("Displayed records table")
 
@@ -443,7 +758,7 @@ def render_monthly_section(person_name, df, logger):
                     "💰 Total Amount (Month)",
                     f"₹{float(monthly_df['total_amount'].sum())}",
                 )
-                st.dataframe(monthly_df, width="stretch")
+                st.dataframe(monthly_df, use_container_width=True)
     else:
         logger.info("Monthly filter skipped — no data available")
         st.info("No records available.")
@@ -470,12 +785,12 @@ def render_monthly_section(person_name, df, logger):
         )
 
 
-def render_group_payment_summary(all_records_df, logger):
+def render_group_payment_summary(all_records_df, logger, group_name=None):
     st.divider()
-    st.subheader("👥 Group & Individual Payment Summary")
+    st.subheader("👥 Payment Summary")
 
     if all_records_df.empty:
-        st.info("No records available for group/individual summary.")
+        st.info("No records available for payment summary.")
         return
 
     work_df = all_records_df.copy()
@@ -521,38 +836,87 @@ def render_group_payment_summary(all_records_df, logger):
         (work_df["year"] == selected_year) & (work_df["month_num"] == selected_month_num)
     ].copy()
     if monthly_scope.empty:
-        st.info("No monthly payment data found.")
+        st.info("No payment data found for this period.")
         return
 
     if "group_name" not in monthly_scope.columns:
         monthly_scope["group_name"] = ""
 
-    monthly_scope["pay_bucket"] = monthly_scope["group_name"].fillna("").astype(str).str.strip()
-    monthly_scope["pay_bucket"] = monthly_scope.apply(
-        lambda row: (
-            row["pay_bucket"] if row["pay_bucket"] else f"Individual - {row['person_name']}"
-        ),
-        axis=1,
-    )
+    # If group_name is provided, show detailed breakdown for that group
+    if group_name:
+        st.markdown(f"### 📊 {group_name.upper()} - Payment Breakdown for {selected_month} {selected_year}")
 
-    payment_summary = (
-        monthly_scope.groupby("pay_bucket")
-        .agg(
-            total_meals=("total_meals", "sum"),
-            total_amount=("total_amount", "sum"),
-            members=("person_name", lambda x: ", ".join(sorted(set(x)))),
+        # Get group data
+        group_data = monthly_scope[
+            monthly_scope["group_name"].astype(str).str.strip().str.lower()
+            == group_name.strip().lower()
+        ].copy()
+
+
+        print(f"**Filtering records for group: '{group_name}'** {group_data}")
+
+        if not group_data.empty:
+            # Group totals
+            st.markdown("#### 👥 Group Totals")
+            group_total_meals = group_data["total_meals"].sum()
+            group_total_amount = group_data["total_amount"].sum()
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📊 Total Meals", int(group_total_meals))
+            with col2:
+                st.metric("💰 Total Payment (₹)", f"{group_total_amount:.2f}")
+            with col3:
+                st.metric("👥 Members", group_data["person_name"].nunique())
+
+            # Individual breakdown within group
+            st.markdown("#### 👤 Individual Member Breakdown")
+            individual_summary = (
+                group_data.groupby("person_name")
+                .agg(
+                    Meals=("total_meals", "sum"),
+                    Amount=("total_amount", "sum"),
+                    Entries=("total_meals", "count"),
+                )
+                .reset_index()
+                .rename(columns={"person_name": "Member"})
+                .sort_values("Member")
+            )
+
+            individual_summary["Amount"] = individual_summary["Amount"].round(2)
+            individual_summary = individual_summary[["Member", "Meals", "Amount", "Entries"]]
+            st.dataframe(individual_summary, use_container_width=True, hide_index=True)
+        else:
+            st.warning(f"No data found for group '{group_name}' in {selected_month} {selected_year}")
+    else:
+        # Show combined view if no specific group
+        monthly_scope["pay_bucket"] = monthly_scope["group_name"].fillna("").astype(str).str.strip()
+        monthly_scope["pay_bucket"] = monthly_scope.apply(
+            lambda row: (
+                row["pay_bucket"] if row["pay_bucket"] else f"Individual - {row['person_name']}"
+            ),
+            axis=1,
         )
-        .reset_index()
-        .rename(columns={"pay_bucket": "payment_target"})
-        .sort_values("payment_target")
-    )
 
-    st.caption(
-        f"Combined payment view for {selected_month} {selected_year}. Groups are merged; users without a group remain individual."
-    )
-    st.dataframe(payment_summary, width="stretch")
+        payment_summary = (
+            monthly_scope.groupby("pay_bucket")
+            .agg(
+                total_meals=("total_meals", "sum"),
+                total_amount=("total_amount", "sum"),
+                members=("person_name", lambda x: ", ".join(sorted(set(x)))),
+            )
+            .reset_index()
+            .rename(columns={"pay_bucket": "payment_target"})
+            .sort_values("payment_target")
+        )
+
+        st.caption(
+            f"Combined payment view for {selected_month} {selected_year}. Groups are merged; users without a group remain individual."
+        )
+        st.dataframe(payment_summary, use_container_width=True)
+
     logger.info(
-        f"Rendered group payment summary | month={selected_month} {selected_year} | rows={len(payment_summary)}"
+        f"Rendered payment summary | month={selected_month} {selected_year} | group={group_name or 'all'}"
     )
 
 
@@ -580,7 +944,7 @@ def render_chart_and_monthly_summary(person_name, df, logger):
     )
 
     logger.info("Generated monthly summary")
-    st.dataframe(monthly, width="stretch")
+    st.dataframe(monthly, use_container_width=True)
 
     logger.info("Monthly summary export triggered")
 
@@ -643,7 +1007,7 @@ def render_feedback_and_admin_panel(person_name, admin_password, logger):
 
     if not fb_df.empty:
         fb_df["_id"] = fb_df["_id"].astype(str)
-        st.dataframe(fb_df, width="stretch")
+        st.dataframe(fb_df, use_container_width=True)
 
         fb_map = {
             f"{row['person_name']} | {row['created_at']}": row["_id"] for _, row in fb_df.iterrows()
@@ -661,3 +1025,199 @@ def render_feedback_and_admin_panel(person_name, admin_password, logger):
         st.session_state.admin_authenticated = False
         logger.info("Admin logged out")
         st.rerun()
+
+
+def render_group_management(logger):
+    """Render group management interface"""
+    st.divider()
+    st.subheader("👥 Group Management")
+
+    # Tab for creating new group or managing existing
+    tab1, tab2 = st.tabs(["Create/Select Group", "Manage Members"])
+
+    with tab1:
+        st.markdown("#### Create New Group")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            new_group_name = st.text_input(
+                "New Group Name",
+                key="new_group_name",
+                placeholder="e.g., demo, office, friends"
+            )
+        with col2:
+            if st.button("➕ Create Group"):
+                if new_group_name:
+                    success, message = create_group(new_group_name, logger)
+                    if success:
+                        st.success(message)
+                        clear_group_cache()
+                        st.rerun()
+                    else:
+                        st.error(message)
+                else:
+                    st.warning("Please enter a group name")
+
+        st.markdown("#### Select Existing Group")
+        all_groups = load_all_groups()
+        if all_groups:
+            selected_group = st.selectbox(
+                "Choose a group",
+                all_groups,
+                key="selected_group_view"
+            )
+
+            if selected_group:
+                members = load_group_members(selected_group)
+                st.info(f"**{selected_group}** has {len(members)} member(s)")
+
+                if members:
+                    st.markdown(f"**Members:** {', '.join(members)}")
+
+                    # Show group statistics
+                    st.markdown("#### Group Statistics")
+                    group_df = get_group_dataframe(selected_group)
+                    if not group_df.empty:
+                        st.dataframe(group_df, use_container_width=True, hide_index=True)
+                else:
+                    st.warning("This group has no members yet")
+        else:
+            st.info("No groups created yet. Create one above!")
+
+    with tab2:
+        st.markdown("#### Manage Group Members")
+        all_groups = load_all_groups()
+        if all_groups:
+            selected_group = st.selectbox(
+                "Choose a group to manage",
+                all_groups,
+                key="selected_group_manage"
+            )
+
+            if selected_group:
+                members = load_group_members(selected_group)
+
+                # Add member
+                st.markdown("##### Add Member")
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    member_name = st.text_input(
+                        "Member Name",
+                        key=f"member_name_{selected_group}",
+                        placeholder="e.g., John, Alice"
+                    )
+                with col2:
+                    if st.button("✅ Add Member"):
+                        if member_name:
+                            success, message = add_member_to_group(selected_group, member_name, logger)
+                            if success:
+                                st.success(message)
+                                clear_group_cache()
+                                st.rerun()
+                            else:
+                                st.error(message)
+                        else:
+                            st.warning("Please enter a member name")
+
+                # Remove member
+                if members:
+                    st.markdown("##### Remove Member")
+                    member_to_remove = st.selectbox(
+                        "Select member to remove",
+                        members,
+                        key=f"remove_member_{selected_group}"
+                    )
+
+                    if st.button("🗑 Remove Member"):
+                        success, message = remove_member_from_group(selected_group, member_to_remove, logger)
+                        if success:
+                            st.warning(message)
+                            clear_group_cache()
+                            st.rerun()
+                        else:
+                            st.error(message)
+                else:
+                    st.info("No members in this group yet")
+        else:
+            st.info("No groups available. Create one first!")
+
+
+def render_group_data_view(logger):
+    """Render a view to see all data for a specific group"""
+    st.divider()
+    st.subheader("📊 View Group Data")
+
+    all_groups = load_all_groups()
+    if not all_groups:
+        st.info("No groups created yet. Create one in the Group Management section.")
+        return
+
+    selected_group = st.selectbox(
+        "Select group to view data",
+        all_groups,
+        key="group_data_view"
+    )
+
+    if selected_group:
+        members = load_group_members(selected_group)
+
+        if not members:
+            st.warning(f"Group '{selected_group}' has no members yet")
+            return
+
+        # Get meals for group members
+        group_meals = list(meals_col.find(
+            {"person_name": {"$in": members}},
+            {
+                "person_name": 1,
+                "meal_date": 1,
+                "lunch": 1,
+                "dinner": 1,
+                "total_meals": 1,
+                "meal_price": 1,
+                "total_amount": 1,
+            }
+        ).sort("meal_date", -1))
+
+        if not group_meals:
+            st.info(f"No meal data recorded for group '{selected_group}' yet")
+            return
+
+        # Prepare dataframe
+        records_df = prepare_records_dataframe(group_meals)
+
+        # Group statistics
+        col1, col2, col3 = st.columns(3)
+
+        total_meals = records_df["total_meals"].sum()
+        total_amount = records_df["total_amount"].sum()
+        num_members = len(members)
+
+        with col1:
+            st.metric("Total Meals", int(total_meals))
+        with col2:
+            st.metric("Total Amount (₹)", f"{total_amount:.2f}")
+        with col3:
+            st.metric("Members", num_members)
+
+        # Display group dataframe
+        st.markdown("#### Group Summary")
+        group_df = get_group_dataframe(selected_group)
+        st.dataframe(group_df, use_container_width=True, hide_index=True)
+
+        # Individual member meals
+        st.markdown("#### Member-wise Meal Records")
+        member_filter = st.selectbox(
+            "Filter by member",
+            ["All"] + members,
+            key="member_filter_meals"
+        )
+
+        if member_filter == "All":
+            display_df = records_df.copy()
+        else:
+            display_df = records_df[records_df["person_name"] == member_filter].copy()
+
+        if not display_df.empty:
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No records found for selected filter")
