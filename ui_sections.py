@@ -452,74 +452,55 @@ def render_current_entry_summary(meal_data, logger):
     logger.info("Displayed current entry summary")
 
 
-def render_monthly_menu_section(person_name, group_name, logger):
+def render_monthly_menu_section(group_name, logger):
     st.divider()
     st.subheader("📖 Monthly Menu")
 
     normalized_group = (group_name or "").strip()
-    menu_records = load_monthly_menus(person_name, normalized_group)
+
+    if not normalized_group:
+        st.warning("No group assigned.")
+        return
+
+    menu_records = load_monthly_menus(normalized_group)
 
     current_key = datetime.utcnow().strftime("%Y-%m")
     current_label = datetime.utcnow().strftime("%B %Y")
 
-    person_current = next(
+    current_menu = next(
         (
             record
             for record in menu_records
-            if record.get("menu_scope") == "person"
-            and record.get("scope_value") == person_name
+            if record.get("scope_value") == normalized_group
             and record.get("month_key") == current_key
         ),
         None,
     )
 
-    group_current = None
-    if normalized_group:
-        group_current = next(
-            (
-                record
-                for record in menu_records
-                if record.get("menu_scope") == "group"
-                and record.get("scope_value") == normalized_group
-                and record.get("month_key") == current_key
-            ),
-            None,
-        )
-
-    if person_current:
-        st.markdown(f"**Your Menu ({current_label})**")
+    if current_menu:
+        st.markdown(f"**Group Menu ({normalized_group}) — {current_label}**")
         st.image(
-            person_current["image_bytes"],
-            caption=f"Updated: {person_current.get('updated_at')} | by {person_current.get('updated_by', 'N/A')}",
+            current_menu["image_bytes"],
+            caption=f"Updated: {current_menu.get('updated_at')}",
             use_container_width=True,
         )
     else:
-        st.info("No personal menu uploaded for current month.")
-
-    if normalized_group:
-        if group_current:
-            st.markdown(f"**Your Group Menu ({normalized_group}) — {current_label}**")
-            st.image(
-                group_current["image_bytes"],
-                caption=f"Updated: {group_current.get('updated_at')} | by {group_current.get('updated_by', 'N/A')}",
-                use_container_width=True,
-            )
-        else:
-            st.info("No group menu uploaded for current month.")
+        st.info("No menu uploaded for current month.")
 
     if menu_records:
         options = []
         for record in menu_records:
-            scope_label = (
-                "Personal"
-                if record.get("menu_scope") == "person"
-                else f"Group ({record.get('scope_value')})"
-            )
-            label = f"{record['month_label']} — {scope_label}"
+            label = record["month_label"]
             options.append((label, record))
 
         labels = [label for label, _ in options]
-        selected_label = st.selectbox("Browse accessible menus by month", labels, index=0)
+
+        selected_label = st.selectbox(
+            "Browse menus by month",
+            labels,
+            index=0,
+        )
+
         selected_menu = dict(options)[selected_label]
 
         if st.button("🖼️ Display Selected Month Menu"):
@@ -528,23 +509,23 @@ def render_monthly_menu_section(person_name, group_name, logger):
         if st.session_state.get("show_selected_month_menu") == selected_label:
             st.image(
                 selected_menu["image_bytes"],
-                caption=f"{selected_label}",
+                caption=selected_label,
                 use_container_width=True,
             )
+
     st.markdown("### Upload / Update Monthly Menu")
+
     selected_month = st.date_input(
         "Select month for menu",
         value=datetime.utcnow().date(),
         key="menu_month",
     )
+
     uploaded_menu = st.file_uploader(
         "Upload menu image (PNG/JPG)",
         type=["png", "jpg", "jpeg"],
         key="menu_uploader",
     )
-
-    menu_scope_options = ["Personal"] + (["Group"] if normalized_group else [])
-    selected_scope = st.selectbox("Menu save scope", menu_scope_options, index=0)
 
     if st.button("💾 Save Monthly Menu"):
         if not uploaded_menu:
@@ -553,34 +534,31 @@ def render_monthly_menu_section(person_name, group_name, logger):
 
         month_key = selected_month.strftime("%Y-%m")
         month_label = selected_month.strftime("%B %Y")
-        scope_type = "group" if selected_scope == "Group" else "person"
-        scope_value = normalized_group if scope_type == "group" else person_name
 
         menu_col.update_one(
             {
-                "menu_scope": scope_type,
-                "scope_value": scope_value,
+                "menu_scope": "group",
+                "scope_value": normalized_group,
                 "month_key": month_key,
             },
             {
                 "$set": {
-                    "menu_scope": scope_type,
-                    "scope_value": scope_value,
+                    "menu_scope": "group",
+                    "scope_value": normalized_group,
                     "month_key": month_key,
                     "month_label": month_label,
                     "image_bytes": uploaded_menu.getvalue(),
                     "image_type": uploaded_menu.type,
                     "updated_at": datetime.utcnow(),
-                    "updated_by": person_name,
                 }
             },
             upsert=True,
         )
 
         clear_cached_queries()
-        logger.info(
-            f"Monthly menu updated | scope={scope_type}:{scope_value} | month={month_key} | by={person_name}"
-        )
+
+        logger.info(f"Monthly menu updated | group={normalized_group} | month={month_key}")
+
         st.success(f"Menu saved for {month_label}")
         st.rerun()
 

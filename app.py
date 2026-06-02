@@ -2,7 +2,6 @@ import streamlit as st
 from logger import get_logger
 from errors import MealTrackerError, ConfigError
 
-
 st.set_page_config(page_title="Meal Tracker", layout="centered")
 
 logger = get_logger()
@@ -21,6 +20,7 @@ try:
         render_export_data,
         render_feedback_and_admin_panel,
         render_monthly_section,
+        render_monthly_menu_section,
         render_name_input,
         render_saved_records,
         render_group_selection,
@@ -48,22 +48,32 @@ st.title("🍽️ Daily Meal Tracker")
 
 try:
     initialize_session_state()
+
+    # User & Group Selection
     person_name, group_name = render_name_input(logger)
 
-    # Show group members and management
     st.divider()
+
+    # Group Management
     render_group_selection(logger, group_name)
 
-    # Bulk meal entry for all members
+    st.divider()
+
+    # Bulk Meal Entry
     render_bulk_meal_entry(group_name, logger)
 
     st.divider()
 
-    # Load and display group data
+    # Load group members
     members = load_group_members(group_name) if group_name else []
 
     if members:
-        # For group view - get data for all group members
+        # Monthly Menu Section
+        render_monthly_menu_section(group_name, logger)
+
+        st.divider()
+
+        # Fetch group meal data
         group_meals = list(
             meals_col.find(
                 {"person_name": {"$in": members}},
@@ -83,18 +93,56 @@ try:
         )
 
         visible_df = prepare_records_dataframe(group_meals)
+
         logger.info(f"Fetched group records for '{group_name}' | count={len(group_meals)}")
 
-        st.markdown(f"### 📊 {group_name.upper()} - All Meal Records")
+        # Meal Records
+        st.markdown(f"## 📋 {group_name.upper()} Meal Records")
         render_saved_records(group_name, visible_df, logger)
-        render_export_data(group_name, visible_df, logger)
-        render_monthly_section(group_name, visible_df, logger)
-        render_group_payment_summary(visible_df, logger, group_name)
-        render_chart_and_monthly_summary(group_name, visible_df, logger)
-    else:
-        st.info("ℹ️ Add members to the group to view meal records")
 
-    render_feedback_and_admin_panel(group_name, admin_password, logger)
+        st.divider()
+
+        # Export Section
+        st.markdown("## 📤 Export Data")
+        render_export_data(group_name, visible_df, logger)
+
+        st.divider()
+
+        # Monthly Summary
+        st.markdown("## 📅 Monthly Summary")
+        render_monthly_section(group_name, visible_df, logger)
+
+        st.divider()
+
+        # Payment Summary
+        st.markdown("## 💰 Group Payment Summary")
+        render_group_payment_summary(
+            visible_df,
+            logger,
+            group_name,
+        )
+
+        st.divider()
+
+        # Charts & Analytics
+        st.markdown("## 📊 Analytics & Trends")
+        render_chart_and_monthly_summary(
+            group_name,
+            visible_df,
+            logger,
+        )
+
+    else:
+        st.info("ℹ️ Add members to the group to view meal records.")
+
+    st.divider()
+
+    # Feedback & Admin Panel
+    render_feedback_and_admin_panel(
+        group_name,
+        admin_password,
+        logger,
+    )
 
 except MealTrackerError as e:
     logger.error(f"Application error: {e.error_code} - {e.message}")
@@ -102,6 +150,9 @@ except MealTrackerError as e:
     st.stop()
 
 except Exception as e:
-    logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+    logger.error(
+        f"Unexpected error: {str(e)}",
+        exc_info=True,
+    )
     st.error("❌ An unexpected error occurred. Please refresh the page or try again later.")
     st.stop()
