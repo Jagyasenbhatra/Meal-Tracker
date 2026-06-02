@@ -81,22 +81,24 @@ def load_feedback_records():
 
 
 @st.cache_data(ttl=CACHE_TTL_MENUS, show_spinner=False)
-def load_monthly_menus(person_name: str, group_name: str):
+def load_monthly_menus(group_name: str):
     """Load monthly menus with error handling"""
     try:
         normalized_group = (group_name or "").strip()
-        scopes = [
-            {"menu_scope": "person", "scope_value": person_name},
-        ]
-        if normalized_group:
-            scopes.append({"menu_scope": "group", "scope_value": normalized_group})
+
+        if not normalized_group:
+            return []
 
         return list(
             menu_col.find(
-                {"$or": scopes},
+                {
+                    "menu_scope": "group",
+                    "scope_value": normalized_group,
+                },
                 MENUS_PROJECTION,
             ).sort("month_key", -1)
         )
+
     except Exception as e:
         raise QueryError(str(e), operation="load_monthly_menus")
 
