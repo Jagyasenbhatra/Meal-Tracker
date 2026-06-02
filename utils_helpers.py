@@ -5,7 +5,6 @@ Contains common patterns for error handling, data validation, and Streamlit oper
 
 import streamlit as st
 from typing import Tuple, Optional, Callable
-from functools import wraps
 import logging
 
 from errors import MealTrackerError
@@ -32,7 +31,7 @@ def safe_streamlit_operation(
     except MealTrackerError as e:
         st.error(f"{error_title}: {e.user_message}")
         return None
-    except Exception as e:
+    except Exception:
         st.error(f"{error_title}: {default_error_msg}")
         return None
 

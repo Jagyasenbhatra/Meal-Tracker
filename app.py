@@ -1,11 +1,9 @@
 import streamlit as st
-import sys
-
-st.set_page_config(page_title="Meal Tracker", layout="centered")
-
 from logger import get_logger
 from errors import MealTrackerError, ConfigError
-from utils_helpers import safe_streamlit_operation
+
+
+st.set_page_config(page_title="Meal Tracker", layout="centered")
 
 logger = get_logger()
 
