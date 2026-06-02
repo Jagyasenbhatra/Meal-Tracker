@@ -3,9 +3,7 @@ import streamlit as st
 from datetime import datetime
 
 from db_connection import groups_col, meals_col
-from errors import (
-    QueryError
-)
+from errors import QueryError
 from validators import (
     validate_group_name,
     validate_member_name,
