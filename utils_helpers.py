@@ -14,7 +14,7 @@ from errors import MealTrackerError
 def safe_streamlit_operation(
     operation_func: Callable,
     error_title: str = "❌ Error",
-    default_error_msg: str = "An error occurred"
+    default_error_msg: str = "An error occurred",
 ) -> Optional:
     """
     Safely execute a Streamlit operation with error handling.
@@ -80,9 +80,7 @@ def create_session_state_key(prefix: str, suffix: str) -> str:
 
 
 def validate_and_get_input(
-    input_value,
-    validator_func: Callable,
-    error_message: str = None
+    input_value, validator_func: Callable, error_message: str = None
 ) -> Tuple[bool, any, Optional[str]]:
     """
     Validate input and return status, value, and error message.
@@ -123,7 +121,7 @@ def batch_process_items(
     items: list,
     batch_size: int = 100,
     process_func: Callable = None,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
 ) -> list:
     """
     Process a large list of items in batches.
@@ -141,7 +139,7 @@ def batch_process_items(
     results = []
 
     for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
+        batch = items[i : i + batch_size]
 
         if logger:
             logger.info(f"Processing batch {i//batch_size + 1} ({len(batch)} items)")
@@ -221,7 +219,7 @@ def truncate_string(text: str, max_length: int = 50, suffix: str = "...") -> str
     """
     if len(text) <= max_length:
         return text
-    return text[:max_length - len(suffix)] + suffix
+    return text[: max_length - len(suffix)] + suffix
 
 
 def is_valid_email(email: str) -> bool:

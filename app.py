@@ -73,21 +73,23 @@ try:
 
     if members:
         # For group view - get data for all group members
-        group_meals = list(meals_col.find(
-            {"person_name": {"$in": members}},
-            {
-                "person_name": 1,
-                "group_name": 1,
-                "meal_date": 1,
-                "mode": 1,
-                "lunch": 1,
-                "dinner": 1,
-                "total_meals": 1,
-                "meal_price": 1,
-                "total_amount": 1,
-                "created_at": 1,
-            }
-        ).sort("meal_date", -1))
+        group_meals = list(
+            meals_col.find(
+                {"person_name": {"$in": members}},
+                {
+                    "person_name": 1,
+                    "group_name": 1,
+                    "meal_date": 1,
+                    "mode": 1,
+                    "lunch": 1,
+                    "dinner": 1,
+                    "total_meals": 1,
+                    "meal_price": 1,
+                    "total_amount": 1,
+                    "created_at": 1,
+                },
+            ).sort("meal_date", -1)
+        )
 
         visible_df = prepare_records_dataframe(group_meals)
         logger.info(f"Fetched group records for '{group_name}' | count={len(group_meals)}")

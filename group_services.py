@@ -60,12 +60,14 @@ def create_group(group_name: str, logger):
         if existing:
             return False, f"Group '{group_name}' already exists"
 
-        groups_col.insert_one({
-            "group_name": group_name,
-            "members": [],
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-        })
+        groups_col.insert_one(
+            {
+                "group_name": group_name,
+                "members": [],
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+        )
 
         logger.info(f"Created group: {group_name}")
         return True, f"Group '{group_name}' created successfully"
@@ -102,7 +104,7 @@ def add_member_to_group(group_name: str, member_name: str, logger):
                     "members": members,
                     "updated_at": datetime.utcnow(),
                 }
-            }
+            },
         )
 
         logger.info(f"Added member '{member_name}' to group '{group_name}'")
@@ -140,7 +142,7 @@ def remove_member_from_group(group_name: str, member_name: str, logger):
                     "members": members,
                     "updated_at": datetime.utcnow(),
                 }
-            }
+            },
         )
 
         logger.info(f"Removed member '{member_name}' from group '{group_name}'")
@@ -166,11 +168,7 @@ def get_group_statistics(group_name: str):
 
         # Get all meals for group members
         pipeline = [
-            {
-                "$match": {
-                    "person_name": {"$in": members}
-                }
-            },
+            {"$match": {"person_name": {"$in": members}}},
             {
                 "$group": {
                     "_id": "$person_name",
@@ -179,9 +177,7 @@ def get_group_statistics(group_name: str):
                     "meal_count": {"$sum": 1},
                 }
             },
-            {
-                "$sort": {"_id": 1}
-            }
+            {"$sort": {"_id": 1}},
         ]
 
         member_stats = list(meals_col.aggregate(pipeline))
@@ -211,23 +207,29 @@ def get_group_dataframe(group_name: str):
 
         data = []
         for member in stats["member_stats"]:
-            data.append({
-                "Member": member["_id"],
-                "Total Meals": member.get("total_meals", 0),
-                "Total Amount (₹)": round(member.get("total_amount", 0), 2),
-                "Meal Entries": member.get("meal_count", 0),
-            })
+            data.append(
+                {
+                    "Member": member["_id"],
+                    "Total Meals": member.get("total_meals", 0),
+                    "Total Amount (₹)": round(member.get("total_amount", 0), 2),
+                    "Meal Entries": member.get("meal_count", 0),
+                }
+            )
 
         df = pd.DataFrame(data)
 
         # Add group total row
         if len(df) > 0:
-            total_row = pd.DataFrame([{
-                "Member": "GROUP TOTAL",
-                "Total Meals": stats["group_total_meals"],
-                "Total Amount (₹)": round(stats["group_total_amount"], 2),
-                "Meal Entries": df["Meal Entries"].sum(),
-            }])
+            total_row = pd.DataFrame(
+                [
+                    {
+                        "Member": "GROUP TOTAL",
+                        "Total Meals": stats["group_total_meals"],
+                        "Total Amount (₹)": round(stats["group_total_amount"], 2),
+                        "Meal Entries": df["Meal Entries"].sum(),
+                    }
+                ]
+            )
             df = pd.concat([df, total_row], ignore_index=True)
 
         return df

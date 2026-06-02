@@ -17,6 +17,7 @@ from config import (
 
 class ValidationError(Exception):
     """Raised when validation fails"""
+
     pass
 
 

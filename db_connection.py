@@ -1,7 +1,12 @@
 from pymongo import ASCENDING, DESCENDING, MongoClient
 import streamlit as st
 from errors import ConnectionError as DBConnectionError, ConfigError
-from config import MONGO_POOL_SIZE_MAX, MONGO_POOL_SIZE_MIN, MONGO_SERVER_TIMEOUT_MS, MONGO_RETRY_WRITES
+from config import (
+    MONGO_POOL_SIZE_MAX,
+    MONGO_POOL_SIZE_MIN,
+    MONGO_SERVER_TIMEOUT_MS,
+    MONGO_RETRY_WRITES,
+)
 
 
 @st.cache_resource
@@ -9,12 +14,16 @@ def get_database():
     """Create a shared MongoDB connection for all Streamlit reruns/sessions."""
     try:
         if "MONGO_URI" not in st.secrets:
-            raise ConfigError("MONGO_URI not found in secrets. Please check your .streamlit/secrets.toml file.")
+            raise ConfigError(
+                "MONGO_URI not found in secrets. Please check your .streamlit/secrets.toml file."
+            )
 
         mongo_uri = st.secrets["MONGO_URI"]
 
         if not mongo_uri:
-            raise ConfigError("MONGO_URI is empty. Please provide a valid MongoDB connection string.")
+            raise ConfigError(
+                "MONGO_URI is empty. Please provide a valid MongoDB connection string."
+            )
 
         # Create client with connection error handling
         client = MongoClient(
@@ -27,7 +36,7 @@ def get_database():
         )
 
         # Test connection
-        client.admin.command('ping')
+        client.admin.command("ping")
 
     except Exception as e:
         raise DBConnectionError(f"Failed to connect to MongoDB: {str(e)}")

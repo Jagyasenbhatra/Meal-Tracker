@@ -112,6 +112,7 @@ FEATURES = {
     "data_export": True,
 }
 
+
 def is_feature_enabled(feature_name: str) -> bool:
     """Check if a feature is enabled"""
     return FEATURES.get(feature_name, False)

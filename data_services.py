@@ -122,4 +122,6 @@ def prepare_records_dataframe(records):
         frame["meal_date"] = pd.to_datetime(frame["meal_date"])
         return frame
     except Exception as e:
-        raise QueryError(f"Failed to prepare dataframe: {str(e)}", operation="prepare_records_dataframe")
+        raise QueryError(
+            f"Failed to prepare dataframe: {str(e)}", operation="prepare_records_dataframe"
+        )

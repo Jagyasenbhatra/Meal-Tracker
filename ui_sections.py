@@ -87,7 +87,7 @@ def render_group_selection(logger, group_name=None):
             "📋 Enter Group Name (or leave empty for individual)",
             key="group_selection_input",
             placeholder="e.g., demo, office, friends",
-            help="Enter an existing group name to see its data, or a new name to create it"
+            help="Enter an existing group name to see its data, or a new name to create it",
         ).strip()
 
         if not group_input:
@@ -122,9 +122,7 @@ def render_group_selection(logger, group_name=None):
     col1, col2 = st.columns([3, 1])
     with col1:
         new_member = st.text_input(
-            "Member Name",
-            key=f"add_member_{group_name}",
-            placeholder="e.g., John"
+            "Member Name", key=f"add_member_{group_name}", placeholder="e.g., John"
         ).strip()
     with col2:
         if st.button("Add", key=f"add_btn_{group_name}"):
@@ -154,7 +152,7 @@ def render_group_selection(logger, group_name=None):
                 "Select to remove",
                 members,
                 key=f"remove_{group_name}",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
             if st.button("🗑 Remove", key=f"remove_btn_{group_name}"):
                 success, msg = remove_member_from_group(group_name, member_to_remove, logger)
@@ -173,18 +171,20 @@ def render_group_selection(logger, group_name=None):
         st.markdown("#### 📈 Group Statistics")
 
         # Get meals for group members
-        group_meals = list(meals_col.find(
-            {"person_name": {"$in": members}},
-            {
-                "person_name": 1,
-                "meal_date": 1,
-                "lunch": 1,
-                "dinner": 1,
-                "total_meals": 1,
-                "meal_price": 1,
-                "total_amount": 1,
-            }
-        ).sort("meal_date", -1))
+        group_meals = list(
+            meals_col.find(
+                {"person_name": {"$in": members}},
+                {
+                    "person_name": 1,
+                    "meal_date": 1,
+                    "lunch": 1,
+                    "dinner": 1,
+                    "total_meals": 1,
+                    "meal_price": 1,
+                    "total_amount": 1,
+                },
+            ).sort("meal_date", -1)
+        )
 
         if group_meals:
             records_df = prepare_records_dataframe(group_meals)
@@ -209,9 +209,7 @@ def render_group_selection(logger, group_name=None):
             # Member filter
             st.markdown("**Individual Member Records:**")
             member_filter = st.selectbox(
-                "Filter by member",
-                ["All"] + members,
-                key=f"filter_{group_name}"
+                "Filter by member", ["All"] + members, key=f"filter_{group_name}"
             )
 
             if member_filter == "All":
@@ -239,7 +237,9 @@ def render_bulk_meal_entry(group_name, logger):
     members = load_group_members(group_name)
 
     if not members:
-        st.warning(f"No members in group '{group_name}'. Add members in the group details section above.")
+        st.warning(
+            f"No members in group '{group_name}'. Add members in the group details section above."
+        )
         return
 
     st.divider()
@@ -250,7 +250,9 @@ def render_bulk_meal_entry(group_name, logger):
     with col1:
         meal_date = st.date_input("📅 Select Date", key="bulk_meal_date")
     with col2:
-        meal_price = st.number_input("💰 Price per Meal (₹)", min_value=0.0, step=1.0, key="bulk_meal_price", value=0.0)
+        meal_price = st.number_input(
+            "💰 Price per Meal (₹)", min_value=0.0, step=1.0, key="bulk_meal_price", value=0.0
+        )
 
     st.markdown("#### 🍴 Member Meals")
 
@@ -310,13 +312,15 @@ def render_bulk_meal_entry(group_name, logger):
         total_meals = lunch_count + dinner_count
         total_amount = total_meals * meal_price
 
-        member_data.append({
-            "member": member,
-            "lunch": lunch_count,
-            "dinner": dinner_count,
-            "total_meals": total_meals,
-            "total_amount": total_amount,
-        })
+        member_data.append(
+            {
+                "member": member,
+                "lunch": lunch_count,
+                "dinner": dinner_count,
+                "total_meals": total_meals,
+                "total_amount": total_amount,
+            }
+        )
 
     # Summary
     st.markdown("#### 📊 Summary")
@@ -341,18 +345,20 @@ def render_bulk_meal_entry(group_name, logger):
         saved_count = 0
         for data in member_data:
             if data["total_meals"] > 0:
-                meals_col.insert_one({
-                    "person_name": data["member"],
-                    "group_name": group_name,
-                    "meal_date": meal_date.isoformat(),
-                    "mode": "Auto (Lunch + Dinner)",
-                    "lunch": data["lunch"],
-                    "dinner": data["dinner"],
-                    "total_meals": data["total_meals"],
-                    "meal_price": meal_price,
-                    "total_amount": data["total_amount"],
-                    "created_at": datetime.utcnow(),
-                })
+                meals_col.insert_one(
+                    {
+                        "person_name": data["member"],
+                        "group_name": group_name,
+                        "meal_date": meal_date.isoformat(),
+                        "mode": "Auto (Lunch + Dinner)",
+                        "lunch": data["lunch"],
+                        "dinner": data["dinner"],
+                        "total_meals": data["total_meals"],
+                        "meal_price": meal_price,
+                        "total_amount": data["total_amount"],
+                        "created_at": datetime.utcnow(),
+                    }
+                )
                 saved_count += 1
 
         if saved_count > 0:
@@ -844,14 +850,15 @@ def render_group_payment_summary(all_records_df, logger, group_name=None):
 
     # If group_name is provided, show detailed breakdown for that group
     if group_name:
-        st.markdown(f"### 📊 {group_name.upper()} - Payment Breakdown for {selected_month} {selected_year}")
+        st.markdown(
+            f"### 📊 {group_name.upper()} - Payment Breakdown for {selected_month} {selected_year}"
+        )
 
         # Get group data
         group_data = monthly_scope[
             monthly_scope["group_name"].astype(str).str.strip().str.lower()
             == group_name.strip().lower()
         ].copy()
-
 
         print(f"**Filtering records for group: '{group_name}'** {group_data}")
 
@@ -887,7 +894,9 @@ def render_group_payment_summary(all_records_df, logger, group_name=None):
             individual_summary = individual_summary[["Member", "Meals", "Amount", "Entries"]]
             st.dataframe(individual_summary, use_container_width=True, hide_index=True)
         else:
-            st.warning(f"No data found for group '{group_name}' in {selected_month} {selected_year}")
+            st.warning(
+                f"No data found for group '{group_name}' in {selected_month} {selected_year}"
+            )
     else:
         # Show combined view if no specific group
         monthly_scope["pay_bucket"] = monthly_scope["group_name"].fillna("").astype(str).str.strip()
@@ -1040,9 +1049,7 @@ def render_group_management(logger):
         col1, col2 = st.columns([3, 1])
         with col1:
             new_group_name = st.text_input(
-                "New Group Name",
-                key="new_group_name",
-                placeholder="e.g., demo, office, friends"
+                "New Group Name", key="new_group_name", placeholder="e.g., demo, office, friends"
             )
         with col2:
             if st.button("➕ Create Group"):
@@ -1060,11 +1067,7 @@ def render_group_management(logger):
         st.markdown("#### Select Existing Group")
         all_groups = load_all_groups()
         if all_groups:
-            selected_group = st.selectbox(
-                "Choose a group",
-                all_groups,
-                key="selected_group_view"
-            )
+            selected_group = st.selectbox("Choose a group", all_groups, key="selected_group_view")
 
             if selected_group:
                 members = load_group_members(selected_group)
@@ -1088,9 +1091,7 @@ def render_group_management(logger):
         all_groups = load_all_groups()
         if all_groups:
             selected_group = st.selectbox(
-                "Choose a group to manage",
-                all_groups,
-                key="selected_group_manage"
+                "Choose a group to manage", all_groups, key="selected_group_manage"
             )
 
             if selected_group:
@@ -1103,12 +1104,14 @@ def render_group_management(logger):
                     member_name = st.text_input(
                         "Member Name",
                         key=f"member_name_{selected_group}",
-                        placeholder="e.g., John, Alice"
+                        placeholder="e.g., John, Alice",
                     )
                 with col2:
                     if st.button("✅ Add Member"):
                         if member_name:
-                            success, message = add_member_to_group(selected_group, member_name, logger)
+                            success, message = add_member_to_group(
+                                selected_group, member_name, logger
+                            )
                             if success:
                                 st.success(message)
                                 clear_group_cache()
@@ -1122,13 +1125,13 @@ def render_group_management(logger):
                 if members:
                     st.markdown("##### Remove Member")
                     member_to_remove = st.selectbox(
-                        "Select member to remove",
-                        members,
-                        key=f"remove_member_{selected_group}"
+                        "Select member to remove", members, key=f"remove_member_{selected_group}"
                     )
 
                     if st.button("🗑 Remove Member"):
-                        success, message = remove_member_from_group(selected_group, member_to_remove, logger)
+                        success, message = remove_member_from_group(
+                            selected_group, member_to_remove, logger
+                        )
                         if success:
                             st.warning(message)
                             clear_group_cache()
@@ -1151,11 +1154,7 @@ def render_group_data_view(logger):
         st.info("No groups created yet. Create one in the Group Management section.")
         return
 
-    selected_group = st.selectbox(
-        "Select group to view data",
-        all_groups,
-        key="group_data_view"
-    )
+    selected_group = st.selectbox("Select group to view data", all_groups, key="group_data_view")
 
     if selected_group:
         members = load_group_members(selected_group)
@@ -1165,18 +1164,20 @@ def render_group_data_view(logger):
             return
 
         # Get meals for group members
-        group_meals = list(meals_col.find(
-            {"person_name": {"$in": members}},
-            {
-                "person_name": 1,
-                "meal_date": 1,
-                "lunch": 1,
-                "dinner": 1,
-                "total_meals": 1,
-                "meal_price": 1,
-                "total_amount": 1,
-            }
-        ).sort("meal_date", -1))
+        group_meals = list(
+            meals_col.find(
+                {"person_name": {"$in": members}},
+                {
+                    "person_name": 1,
+                    "meal_date": 1,
+                    "lunch": 1,
+                    "dinner": 1,
+                    "total_meals": 1,
+                    "meal_price": 1,
+                    "total_amount": 1,
+                },
+            ).sort("meal_date", -1)
+        )
 
         if not group_meals:
             st.info(f"No meal data recorded for group '{selected_group}' yet")
@@ -1207,9 +1208,7 @@ def render_group_data_view(logger):
         # Individual member meals
         st.markdown("#### Member-wise Meal Records")
         member_filter = st.selectbox(
-            "Filter by member",
-            ["All"] + members,
-            key="member_filter_meals"
+            "Filter by member", ["All"] + members, key="member_filter_meals"
         )
 
         if member_filter == "All":
