@@ -145,7 +145,7 @@ def remove_member_from_group(group_name: str, member_name: str, logger):
 
     except Exception as e:
         logger.error(f"Failed to remove member from group: {str(e)}")
-        return False, f"Failed to remove member. Please try again."
+        return False, "Failed to remove member. Please try again."
 
 
 def get_group_statistics(group_name: str):

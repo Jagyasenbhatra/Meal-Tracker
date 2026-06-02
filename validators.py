@@ -100,7 +100,7 @@ def validate_meal_price(price) -> float:
         raise ValidationError("Meal price must be a valid number")
 
     if price < MIN_MEAL_PRICE:
-        raise ValidationError(f"Meal price cannot be negative")
+        raise ValidationError("Meal price cannot be negative")
 
     if price > MAX_MEAL_PRICE:
         raise ValidationError(f"Meal price exceeds maximum limit (₹{MAX_MEAL_PRICE})")
